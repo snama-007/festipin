@@ -1,0 +1,418 @@
+{
+  "event": {
+    "event_type": "graduation",
+    "theme": "silver and white graduation",
+    "honoree_name": "Sophia",
+    "honoree_age": null,
+    "date": "2025-12-15",
+    "time": "3:00 PM - 7:00 PM",
+    "location": "Backyard",
+    "guest_count": 25,
+    "guest_age_range": [
+      18,
+      25
+    ]
+  },
+  "checklist": [
+    {
+      "name": "Decor",
+      "items": [
+        {
+          "task": "Set up silver and white balloon arch",
+          "description": "Create an elegant arch using silver and white balloons at the entrance",
+          "quantity": 1,
+          "estimated_cost_min": 100,
+          "estimated_cost_max": 200,
+          "vendor_type": "balloon decorator",
+          "priority": "high",
+          "status": "pending",
+          "due_date": "2025-12-14",
+          "duration_minutes": 60,
+          "diy_alternative": "Purchase a balloon arch kit online ($40) and assemble it with a friend a day before",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        },
+        {
+          "task": "Install a silver and white backdrop",
+          "description": "Set up a stylish backdrop for photos and speeches",
+          "quantity": 1,
+          "estimated_cost_min": 100,
+          "estimated_cost_max": 150,
+          "vendor_type": "event decorator",
+          "priority": "high",
+          "status": "pending",
+          "due_date": "2025-12-14",
+          "duration_minutes": 45,
+          "diy_alternative": "Use silver and white fabric or paper to create a backdrop yourself",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        },
+        {
+          "task": "Decorate tables with silver and white linens",
+          "description": "Enhance tables with elegant silver and white tablecloths, runners, and centerpieces",
+          "quantity": 3,
+          "estimated_cost_min": 75,
+          "estimated_cost_max": 125,
+          "vendor_type": "linen rental",
+          "priority": "medium",
+          "status": "pending",
+          "due_date": "2025-12-14",
+          "duration_minutes": 30,
+          "diy_alternative": "Purchase inexpensive linens and make DIY centerpieces using candles and faux flowers",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "Food",
+      "items": [
+        {
+          "task": "Order catering service",
+          "description": "Arrange for a simple yet elegant buffet with finger foods and a small dessert bar",
+          "quantity": 1,
+          "estimated_cost_min": 300,
+          "estimated_cost_max": 500,
+          "vendor_type": "caterer",
+          "priority": "high",
+          "status": "pending",
+          "due_date": "2025-12-01",
+          "duration_minutes": 0,
+          "diy_alternative": "Prepare a DIY buffet with store-bought platters and homemade desserts",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        },
+        {
+          "task": "Set up a beverage station",
+          "description": "Include non-alcoholic options like sparkling water, soda, and a signature mocktail",
+          "quantity": 1,
+          "estimated_cost_min": 50,
+          "estimated_cost_max": 100,
+          "vendor_type": "beverage supplier",
+          "priority": "medium",
+          "status": "pending",
+          "due_date": "2025-12-14",
+          "duration_minutes": 30,
+          "diy_alternative": "Purchase beverages from a local store and create a simple setup",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "Entertainment",
+      "items": [
+        {
+          "task": "Hire DJ or rent sound system",
+          "description": "Provide music and a microphone for speeches",
+          "quantity": 1,
+          "estimated_cost_min": 150,
+          "estimated_cost_max": 250,
+          "vendor_type": "DJ or equipment rental",
+          "priority": "high",
+          "status": "pending",
+          "due_date": "2025-12-01",
+          "duration_minutes": 0,
+          "diy_alternative": "Create a playlist on Spotify and use a home sound system",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        }
+      ]
+    },
+    {
+      "name": "Setup",
+      "items": [
+        {
+          "task": "Arrange seating",
+          "description": "Set up chairs and tables for dining and socializing",
+          "quantity": 25,
+          "estimated_cost_min": 0,
+          "estimated_cost_max": 50,
+          "vendor_type": "furniture rental",
+          "priority": "medium",
+          "status": "pending",
+          "due_date": "2025-12-14",
+          "duration_minutes": 60,
+          "diy_alternative": "Use existing outdoor furniture or borrow from friends",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        },
+        {
+          "task": "Install lighting",
+          "description": "Use string lights or lanterns to create a warm ambiance",
+          "quantity": 1,
+          "estimated_cost_min": 30,
+          "estimated_cost_max": 60,
+          "vendor_type": "lighting supplier",
+          "priority": "medium",
+          "status": "pending",
+          "due_date": "2025-12-14",
+          "duration_minutes": 60,
+          "diy_alternative": "Purchase affordable string lights from a home store",
+          "assigned_to": null,
+          "completed_at": null,
+          "notes": null
+        }
+      ]
+    }
+  ],
+  "budget_total_min": 805,
+  "budget_total_max": 1435,
+  "budget_breakdown": [
+    {
+      "category": "Decor",
+      "amount_min": 275,
+      "amount_max": 475,
+      "items": [
+        "Balloon arch",
+        "Backdrop",
+        "Table decor"
+      ]
+    },
+    {
+      "category": "Food",
+      "amount_min": 350,
+      "amount_max": 600,
+      "items": [
+        "Catering",
+        "Beverage station"
+      ]
+    },
+    {
+      "category": "Entertainment",
+      "amount_min": 150,
+      "amount_max": 250,
+      "items": [
+        "DJ or sound system"
+      ]
+    },
+    {
+      "category": "Setup",
+      "amount_min": 30,
+      "amount_max": 110,
+      "items": [
+        "Seating",
+        "Lighting"
+      ]
+    }
+  ],
+  "timeline": [
+    {
+      "date": "2025-10-15",
+      "task": "Book vendors",
+      "category": "Planning",
+      "status": "pending",
+      "notes": null
+    },
+    {
+      "date": "2025-11-01",
+      "task": "Send invitations",
+      "category": "Planning",
+      "status": "pending",
+      "notes": null
+    },
+    {
+      "date": "2025-12-01",
+      "task": "Confirm catering and entertainment",
+      "category": "Food and Entertainment",
+      "status": "pending",
+      "notes": null
+    },
+    {
+      "date": "2025-12-14",
+      "task": "Setup decor and lighting",
+      "category": "Setup",
+      "status": "pending",
+      "notes": null
+    },
+    {
+      "date": "2025-12-15",
+      "task": "Finalize setup and greet guests",
+      "category": "Execution",
+      "status": "pending",
+      "notes": null
+    }
+  ],
+  "vendors": [
+    {
+      "type": "Balloon Decorator",
+      "why_needed": "To create a professional balloon arch",
+      "budget_range": [
+        100,
+        200
+      ],
+      "book_by": "2025-10-15",
+      "suggested_vendors": []
+    },
+    {
+      "type": "Event Decorator",
+      "why_needed": "For setting up the backdrop and table decor",
+      "budget_range": [
+        100,
+        150
+      ],
+      "book_by": "2025-10-15",
+      "suggested_vendors": []
+    },
+    {
+      "type": "Caterer",
+      "why_needed": "To provide a buffet and dessert bar",
+      "budget_range": [
+        300,
+        500
+      ],
+      "book_by": "2025-12-01",
+      "suggested_vendors": []
+    },
+    {
+      "type": "DJ or Equipment Rental",
+      "why_needed": "For music and sound during the event",
+      "budget_range": [
+        150,
+        250
+      ],
+      "book_by": "2025-12-01",
+      "suggested_vendors": []
+    },
+    {
+      "type": "Linen Rental",
+      "why_needed": "For elegant table settings",
+      "budget_range": [
+        75,
+        125
+      ],
+      "book_by": "2025-10-15",
+      "suggested_vendors": []
+    }
+  ],
+  "notes": "Ensure a backup plan for adverse weather, such as renting a tent. Confirm dietary restrictions with all guests beforehand. Include a small first aid kit on-site for emergencies.",
+  "tags": [],
+  "scene_analysis": {
+    "theme": "silver and white graduation party",
+    "confidence": 0.95,
+    "objects": [
+      {
+        "type": "balloon arch",
+        "color": "silver",
+        "position": {
+          "x": 0.7,
+          "y": 0.1
+        },
+        "dimensions": {
+          "width": 0.5,
+          "height": 0.8
+        },
+        "count": 1,
+        "confidence": 0.9,
+        "estimated_cost": [
+          100,
+          180
+        ],
+        "materials": [
+          "latex balloons",
+          "mylar balloons"
+        ]
+      },
+      {
+        "type": "backdrop",
+        "color": "white",
+        "position": {
+          "x": 0.3,
+          "y": 0.2
+        },
+        "dimensions": {
+          "width": 0.4,
+          "height": 0.6
+        },
+        "count": 1,
+        "confidence": 0.9,
+        "estimated_cost": [
+          80,
+          150
+        ],
+        "materials": [
+          "fabric",
+          "wood"
+        ]
+      },
+      {
+        "type": "pedestal",
+        "color": "white",
+        "position": {
+          "x": 0.1,
+          "y": 0.5
+        },
+        "dimensions": {
+          "width": 0.2,
+          "height": 0.4
+        },
+        "count": 3,
+        "confidence": 0.9,
+        "estimated_cost": [
+          60,
+          120
+        ],
+        "materials": [
+          "wood",
+          "paint"
+        ]
+      },
+      {
+        "type": "vase",
+        "color": "gold",
+        "position": {
+          "x": 0.2,
+          "y": 0.6
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.2
+        },
+        "count": 2,
+        "confidence": 0.9,
+        "estimated_cost": [
+          30,
+          60
+        ],
+        "materials": [
+          "metal",
+          "glass"
+        ]
+      }
+    ],
+    "color_palette": [
+      "#C0C0C0",
+      "#FFFFFF",
+      "#D4AF37"
+    ],
+    "layout_type": "arch_backdrop_table",
+    "recommended_venue": "indoor_medium",
+    "style_tags": [
+      "elegant",
+      "modern",
+      "minimalist"
+    ],
+    "occasion_type": "graduation",
+    "age_range": [
+      18,
+      25
+    ],
+    "budget_estimate": {
+      "min": 400,
+      "max": 800
+    }
+  },
+  "plan_id": null,
+  "user_id": null,
+  "created_at": "2025-10-05T23:57:04.326791",
+  "updated_at": "2025-10-05T23:57:04.326796",
+  "version": 1,
+  "status": "draft"
+}

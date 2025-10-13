@@ -1,0 +1,25 @@
+{
+    "eventType": "Birthday",
+    "title": "Aaron's 5th Birthday",
+    "hostName": "Sandeep Nama",
+    "honoreeName": "Aaron",
+    "age": 5,
+    "gender": "Male",
+    "theme": "Blippi",
+    "date": "2025-12-08",
+    "time": { "start": "16:00", "end": "19:00" },
+    "guestCount": { "adults": 20, "kids": 30 },
+    "location": {
+      "type": "Banquet Hall",
+      "name": "FunZone Hall",
+      "address": "123 Main St, San Jose, CA"
+    },
+    "budget": {
+      "min": 2000,
+      "max": 3000
+    },
+    "foodPreference": "Veg",
+    "activities": ["Balloon Twisting", "Magic Show"],
+    "rsvpDeadline": "2025-11-28",
+    "contactInfo": "sandeep@example.com"
+  }

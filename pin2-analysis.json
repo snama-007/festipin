@@ -1,0 +1,127 @@
+{
+  "success": true,
+  "input_id": "upload_test_1759648859",
+  "image_url": "http://localhost:9000/uploads/uploads/uploads_test_20251005_072040_299be299.jpeg",
+  "message": "Successfully analyzed: graduation celebration with pink and gold balloons",
+  "next_step": "plan_generation",
+  "fallback_action": null,
+  "context": {
+    "storage_url": "http://localhost:9000/uploads/uploads/uploads_test_20251005_072040_299be299.jpeg",
+    "filename": "pin2.jpeg",
+    "scene_data": {
+      "theme": "graduation celebration with pink and gold balloons",
+      "confidence": 0.95,
+      "objects": [
+        {
+          "type": "balloon arch",
+          "color": "pink and gold",
+          "position": {
+            "x": 0.1,
+            "y": 0.4
+          },
+          "dimensions": {
+            "width": 0.3,
+            "height": 0.5
+          },
+          "count": 1,
+          "confidence": 0.9,
+          "estimated_cost": [
+            80,
+            150
+          ],
+          "materials": [
+            "latex balloons",
+            "mylar balloons"
+          ]
+        },
+        {
+          "type": "backdrop with neon sign",
+          "color": "white",
+          "position": {
+            "x": 0.4,
+            "y": 0.3
+          },
+          "dimensions": {
+            "width": 0.2,
+            "height": 0.4
+          },
+          "count": 1,
+          "confidence": 0.9,
+          "estimated_cost": [
+            100,
+            200
+          ],
+          "materials": [
+            "acrylic",
+            "neon light"
+          ]
+        },
+        {
+          "type": "cake table",
+          "color": "white",
+          "position": {
+            "x": 0.6,
+            "y": 0.5
+          },
+          "dimensions": {
+            "width": 0.1,
+            "height": 0.2
+          },
+          "count": 1,
+          "confidence": 0.9,
+          "estimated_cost": [
+            50,
+            100
+          ],
+          "materials": [
+            "wood",
+            "paint"
+          ]
+        },
+        {
+          "type": "mannequin with graduation gown",
+          "color": "black",
+          "position": {
+            "x": 0.8,
+            "y": 0.5
+          },
+          "dimensions": {
+            "width": 0.1,
+            "height": 0.4
+          },
+          "count": 1,
+          "confidence": 0.9,
+          "estimated_cost": [
+            100,
+            200
+          ],
+          "materials": [
+            "fabric",
+            "plastic"
+          ]
+        }
+      ],
+      "color_palette": [
+        "#FFC0CB",
+        "#FFD700",
+        "#FFFFFF"
+      ],
+      "layout_type": "arch_backdrop_table",
+      "recommended_venue": "outdoor_venue",
+      "style_tags": [
+        "elegant",
+        "modern",
+        "festive"
+      ],
+      "occasion_type": "graduation",
+      "age_range": [
+        18,
+        25
+      ],
+      "budget_estimate": {
+        "min": 400,
+        "max": 800
+      }
+    }
+  }
+}
