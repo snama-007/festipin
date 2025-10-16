@@ -30,6 +30,7 @@ dependencies = [
     # AI/ML - Compatible versions
     "openai==1.10.0",
     "google-generativeai==0.3.2",
+    "google-cloud-aiplatform==1.38.1",
     "langchain-core>=0.2.43,<0.3.0",
     "langchain>=0.2.0,<0.3.0",
     "langchain-openai>=0.1.0,<0.2.0",

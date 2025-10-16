@@ -12,7 +12,7 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.api.routes import input, vision, plan, export, samples, orchestration, extraction
+from app.api.routes import input, vision, plan, export, samples, orchestration, extraction, motif
 
 # Setup logging
 logger = setup_logging()
@@ -93,6 +93,7 @@ app.include_router(export.router, prefix="/api/v1", tags=["Export"])
 app.include_router(samples.router, prefix="/api/v1", tags=["Samples"])
 app.include_router(orchestration.router, prefix="/api/v1", tags=["Orchestration"])
 app.include_router(extraction.router, tags=["Data Extraction"])
+app.include_router(motif.router, tags=["Motif"])
 
 # Mount static files for local storage (development)
 # Note: Must be mounted AFTER CORS middleware but BEFORE routes

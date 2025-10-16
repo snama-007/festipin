@@ -20,21 +20,14 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Virtual environments
 venv/
+venv-*/
 env/
 ENV/
-.venv
-
-# Node
-node_modules/
-.next/
-out/
-.cache/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+env.bak/
+venv.bak/
 
 # IDE
 .vscode/
@@ -42,39 +35,62 @@ yarn-error.log*
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Environment
-.env
-.env.local
-.env.*.local
-*.local
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Logs
 *.log
 logs/
-*.pid
 
-# Database
-*.db
-*.sqlite
+# Temporary files
+*.tmp
+*.temp
+np.py
+*.pyc
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Firebase
 firebase-credentials.json
-*-firebase.json
+firebase-*.json
 
-# Uploads
-uploads/
+# Memory store
 memory_store/
+uploads/
 
-# Test
-.pytest_cache/
-coverage/
-.coverage
-htmlcov/
-.tox/
+# Test files
+test_*.py
+*_test.py
+tests/
 
-# Build
-*.pyc
-*.pyo
-
+# Documentation that's not essential
+MOTIF_FEATURE_STALLED.md
+MOTIF_IMPLEMENTATION_STATUS.md
+MOTIF_MODULE_IMPLEMENTATION_GUIDE.md
+MOTIF_PAGE_READY.md
+MOTIF_3D_VIEWER_READY.md
+DEPENDENCY_FIX_SUMMARY.md
+backend/OPENAI_FIX.md
+backend/REINSTALL.sh
