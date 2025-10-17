@@ -345,12 +345,14 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onMouseDown={handleMouseDown}
-      whileHover={{ 
-        scale: isDragging ? 1 : (isActive ? 1.1 : 1.05),
-        y: isDragging ? 0 : (isActive ? -12 : -6),
-        rotateY: isDragging ? 0 : (isActive ? 8 : 3),
-        boxShadow: `0 25px 50px ${getStatusGlow()}`
-      }}
+            whileHover={{ 
+              scale: isDragging ? 1 : (isActive ? 1.1 : 1.05),
+              y: isDragging ? 0 : (isActive ? -12 : -6),
+              rotateY: isDragging ? 0 : (isActive ? 8 : 3),
+              boxShadow: isActive 
+                ? `0 25px 50px ${getStatusGlow()}, 0 0 40px rgba(59, 130, 246, 0.4), 0 0 80px rgba(147, 51, 234, 0.2)`
+                : `0 25px 50px ${getStatusGlow()}, 0 0 30px rgba(59, 130, 246, 0.3), 0 0 60px rgba(147, 51, 234, 0.15)`
+            }}
       initial={{ opacity: 0, y: 30, scale: 0.8, rotateX: -15 }}
       animate={{ 
         opacity: isActive ? 1 : 0.6, 
@@ -370,9 +372,42 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       {/* Animated background gradient */}
           <motion.div 
             className={`absolute inset-0 bg-gradient-to-br ${borderGradient} opacity-10`}
-            animate={isHovered ? { opacity: 0.3 } : { opacity: 0.05 }}
+            animate={isActive ? { opacity: 0.4 } : (isHovered ? { opacity: 0.25 } : { opacity: 0.05 })}
             transition={{ duration: 0.3 }}
           />
+
+          {/* Vibrant hover gradient overlay */}
+          <AnimatePresence>
+            {isHovered && (
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-blue-400/30 via-purple-400/20 to-pink-400/30 rounded-3xl"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Radiance effect on hover */}
+          <AnimatePresence>
+            {isHovered && (
+              <motion.div
+                className="absolute inset-0 rounded-3xl"
+                style={{
+                  background: `radial-gradient(circle at center, 
+                    rgba(59, 130, 246, 0.15) 0%, 
+                    rgba(147, 51, 234, 0.1) 30%, 
+                    rgba(236, 72, 153, 0.08) 60%, 
+                    transparent 100%)`
+                }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              />
+            )}
+          </AnimatePresence>
 
       {/* Active Agent Blue Overlay */}
       {isActive && (
@@ -524,11 +559,20 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         </div>
       </div>
 
-      {/* Enhanced hover overlay */}
+      {/* Enhanced hover glow effect */}
       <AnimatePresence>
-        {isHovered && (
+        {isHovered && !isActive && (
           <motion.div
-            className="absolute inset-0 bg-black/20 rounded-3xl"
+            className="absolute inset-0 rounded-3xl"
+            style={{
+              background: `linear-gradient(135deg, 
+                rgba(59, 130, 246, 0.1) 0%, 
+                rgba(147, 51, 234, 0.08) 50%, 
+                rgba(236, 72, 153, 0.1) 100%)`,
+              boxShadow: `0 0 30px rgba(59, 130, 246, 0.3), 
+                          0 0 60px rgba(147, 51, 234, 0.2), 
+                          0 0 90px rgba(236, 72, 153, 0.1)`
+            }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

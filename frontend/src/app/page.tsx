@@ -1655,19 +1655,13 @@ export default function PartyPlanOS() {
                           value={pinterestUrl}
                           onChange={handleUrlChange}
                           onKeyPress={(e) => e.key === 'Enter' && urlValidation.isValid && handleGeneratePlan()}
-                          placeholder="Paste Pinterest, TikTok, Lemon8, or Instagram URL here" 
-                          className={`w-full p-4 pr-12 rounded-2xl border-2 shadow-inner focus:outline-none text-gray-900 placeholder-gray-500 transition-all duration-300 backdrop-blur-xl ${
-                            urlValidation.isValid 
-                              ? 'bg-green-50/80 border-green-400 focus:ring-2 focus:ring-green-400 focus:border-green-300 shadow-green-200' 
-                              : urlValidation.isInvalid
-                              ? 'bg-red-50/80 border-red-400 focus:ring-2 focus:ring-red-400 focus:border-red-300 shadow-red-200'
-                              : 'bg-white/50 border-white/40 focus:ring-2 focus:ring-pink-400 focus:border-pink-300'
-                          }`}
-                          disabled={loading}
+                          placeholder="Pinterest, TikTok, Lemon8, or Instagram URL (Currently Disabled)" 
+                          className="w-full p-4 pr-12 rounded-2xl border-2 shadow-inner focus:outline-none text-gray-500 placeholder-gray-400 transition-all duration-300 backdrop-blur-xl bg-gray-100/50 border-gray-300 cursor-not-allowed"
+                          disabled={true}
                         />
                         
                         {/* Clear Button */}
-                        {pinterestUrl && (
+                        {false && pinterestUrl && (
                           <motion.button
                             onClick={() => setPinterestUrl('')}
                             className="absolute right-3 top-2.5 px-1.5 pt-2 pb-1.5 rounded-full bg-gray-200/80 hover:bg-gray-300/80 border border-gray-300/50 shadow-sm transition-all duration-200"
