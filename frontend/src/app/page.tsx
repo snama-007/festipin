@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { uploadAndAnalyzeImage, generatePlan } from '@/services/api'
 import type { VisionAnalysisResponse } from '@/services/api'
 import { useAgentOrchestration } from '@/components/AgentOrchestration'
@@ -10,6 +11,7 @@ import type { OrchestrationInput } from '@/services/api'
 import { extractEventData, validatePartyContent, ExtractedEventData, ExtractionResponse, ValidationResponse } from '../services/api'
 import { DataInputForm } from '../components/DataInputForm'
 import { ConversationalDialog } from '../components/ConversationalDialog'
+import { generatePartyId } from '@/lib/partyId'
 
 const partyTags = [
   "🎉 BalloonVendor",
@@ -51,6 +53,7 @@ interface PlanComponent {
 }
 
 export default function PartyPlanOS() {
+  const router = useRouter()
   // Generate unique ID
   const generateUniqueId = () => {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${performance.now().toString(36)}`
@@ -485,33 +488,24 @@ export default function PartyPlanOS() {
   const transitionToBuildMode = async () => {
     setIsTransitioning(true)
     
+    // Generate unique party ID
+    const partyId = generatePartyId()
+    
     // Clear any existing logs before transition
     setAgentLogs([])
     
     // Clear search mode hover states
     setHoveredChip(null)
     
-    // Immediately switch to build mode
-    setMode('build')
+    // Add initial logs before navigation
+    addAgentLog('system_info', '🎉 Starting party plan generation...')
+    addAgentLog('user_input', `User request: ${pinterestUrl || chatMessage}`, undefined, {
+      type: tab,
+      hasImage: !!selectedFile
+    })
     
-    // Add initial logs after mode switch
-    setTimeout(() => {
-      addAgentLog('system_info', '🎉 Starting party plan generation...')
-      addAgentLog('user_input', `User request: ${pinterestUrl || chatMessage}`, undefined, {
-        type: tab,
-        hasImage: !!selectedFile
-      })
-    }, 100)
-    
-    // Wait for transition animation
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    setIsTransitioning(false)
-    
-    // Start orchestration in background
-    setTimeout(() => {
-      startOrchestration()
-    }, 200)
+    // Navigate to build page with party ID
+    router.push(`/build/${partyId}`)
   }
 
   // Clear search state when exiting build mode
@@ -2061,76 +2055,6 @@ export default function PartyPlanOS() {
                   alt="Festimo" 
                   className="w-24 h-24 opacity-60 hover:opacity-80 transition-opacity duration-300"
                 />
-        </motion.div>
-
-              {/* Full Screen Canvas */}
-              <motion.div
-                className="relative backdrop-blur-2xl transition-all duration-300"
-                style={{ 
-                  width: '100%',
-                  height: '100vh',
-                  background: `
-                    linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 50%, rgba(255, 255, 255, 0.95) 100%),
-                    radial-gradient(circle at 70% 30%, rgba(173, 216, 230, 0.15) 0%, transparent 50%),
-                    radial-gradient(circle at 20% 80%, rgba(221, 160, 221, 0.15) 0%, transparent 50%)
-                  `,
-                  border: '1px solid rgba(255, 255, 255, 0.6)',
-                  borderRadius: '20px',
-                  boxShadow: `
-                    0 20px 40px rgba(173, 216, 230, 0.2),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-                    0 0 0 1px rgba(255, 255, 255, 0.3)
-                  `
-                }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2, duration: 0.8 }}
-              >
-                <div className="h-full flex flex-col">
-                  {/* Full Screen Canvas Area */}
-                  <div className="flex-1 p-6 overflow-hidden">
-                    <motion.div
-                      className={`h-full rounded-2xl border-2 border-dashed backdrop-blur-sm relative overflow-hidden cursor-grab active:cursor-grabbing transition-all duration-200 ${
-                        false 
-                          ? 'border-green-400 bg-green-50/30' 
-                          : 'border-gray-300/60 bg-gradient-to-br from-gray-50/50 to-white/50'
-                      }`}
-                      style={{
-                        background: `
-                          linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-                          linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-                          linear-gradient(135deg, rgba(255,255,255,0.8), rgba(248,250,252,0.6)),
-                          radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-                          radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.1) 0%, transparent 50%)
-                        `,
-                        backgroundSize: '20px 20px, 20px 20px, 100px 100px, 100px 100px, 100% 100%, 200px 200px, 200px 200px',
-                        backgroundPosition: `0px 0px, 0px 0px, 0px 0px, 0px 0px, 0 0, 0px 0px, 0px 0px`,
-                        boxShadow: `
-                          inset 0 0 0 1px rgba(255, 255, 255, 0.5),
-                          0 8px 32px rgba(59, 130, 246, 0.1)
-                        `
-                      }}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 1, duration: 0.6 }}
-                    >
-                      {/* Empty Canvas */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <span className="text-3xl">🎨</span>
-                          </div>
-                          <h3 className="text-lg font-semibold text-gray-700 mb-2">Canvas Ready</h3>
-                          <p className="text-sm text-gray-500 max-w-xs">
-                            Your party planning canvas is ready for use
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </div>
-                </div>
               </motion.div>
             </motion.div>
           )}
