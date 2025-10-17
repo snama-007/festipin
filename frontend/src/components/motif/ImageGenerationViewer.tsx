@@ -100,7 +100,8 @@ export function ImageGenerationViewer({
 
   // Generate image on component mount
   useEffect(() => {
-    if (prompt.trim()) {
+    // Only generate if we have at least a prompt or inspiration image
+    if (prompt.trim() || inspirationImage) {
       generateImage()
     }
   }, [prompt, style])
@@ -112,6 +113,14 @@ export function ImageGenerationViewer({
     initializeProcessSteps()
 
     try {
+      // Validate that at least one input is provided
+      const hasPrompt = prompt && prompt.trim().length > 0
+      const hasImage = inspirationImage && inspirationImage.length > 0
+
+      if (!hasPrompt && !hasImage) {
+        throw new Error('Please provide a prompt or upload an inspiration image')
+      }
+
       // Step 1: Validate Request
       updateProcessStep('validate', 'running')
       await new Promise(resolve => setTimeout(resolve, 300))
@@ -129,23 +138,38 @@ export function ImageGenerationViewer({
 
       // Step 4: Generate Image
       updateProcessStep('generate', 'running')
-      
-      const requestBody = {
-        prompt: prompt,
-        style: style,
-        user_id: 'user_' + Date.now()
+
+      // Use the unified endpoint that handles both prompt and image
+      const formData = new FormData()
+
+      // Add prompt if provided
+      if (hasPrompt) {
+        formData.append('prompt', prompt)
       }
 
-      const response = await fetch('http://localhost:9000/motif/generation/generate-from-prompt', {
+      // Add style if provided
+      if (style) {
+        formData.append('style', style)
+      }
+
+      // Add user ID
+      formData.append('user_id', 'user_' + Date.now())
+
+      // Add inspiration image if provided
+      if (hasImage) {
+        const response = await fetch(inspirationImage)
+        const blob = await response.blob()
+        formData.append('inspiration_image', blob, 'inspiration.jpg')
+      }
+
+      const response = await fetch('http://localhost:9000/motif/generation/generate-from-inspiration', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
+        body: formData
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate image')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || 'Failed to generate image')
       }
 
       const data = await response.json()
@@ -313,31 +337,18 @@ export function ImageGenerationViewer({
 
       {/* Generation Controls */}
       <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md rounded-lg px-4 py-2 text-white text-sm z-10">
-        <div className="flex gap-2">
-          <button
-            onClick={generateImage}
-            disabled={isGenerating}
-            className="flex items-center gap-1 px-3 py-1 rounded bg-[#6b46c1] hover:bg-[#5a3a9a] disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Wand2 className="w-4 h-4" />
-            )}
-            Generate
-          </button>
-          
-          {inspirationImage && (
-            <button
-              onClick={generateFromInspiration}
-              disabled={isGenerating}
-              className="flex items-center gap-1 px-3 py-1 rounded bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              <RefreshCw className="w-4 h-4" />
-              From Image
-            </button>
+        <button
+          onClick={generateImage}
+          disabled={isGenerating}
+          className="flex items-center gap-1 px-3 py-1 rounded bg-[#6b46c1] hover:bg-[#5a3a9a] disabled:opacity-50"
+        >
+          {isGenerating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Wand2 className="w-4 h-4" />
           )}
-        </div>
+          Generate
+        </button>
       </div>
 
       {/* Process Log Toggle */}

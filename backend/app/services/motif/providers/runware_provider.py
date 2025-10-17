@@ -275,8 +275,22 @@ class RunwareProvider(ImageGenerationProvider):
 
                 # Add reference image if provided (image-to-image)
                 if request.reference_image:
-                    runware_request.seedImage = request.reference_image
-                    runware_request.strength = max(0.0, min(1.0, request.image_strength))  # Clamp strength
+                    # Runware accepts data URI strings directly for seedImage
+                    try:
+                        # Pass the data URI directly - Runware SDK handles the conversion
+                        runware_request.seedImage = request.reference_image
+
+                        # Set strength for image-to-image generation
+                        if request.image_strength is not None:
+                            runware_request.strength = max(0.0, min(1.0, request.image_strength))
+                        else:
+                            runware_request.strength = 0.8  # Default strength
+
+                        logger.info(f"Using seed image for image-to-image generation with strength {runware_request.strength}")
+                    except Exception as e:
+                        logger.error(f"Failed to process seed image: {e}")
+                        # Continue without seed image rather than failing completely
+                        pass
 
                 # Add mask for inpainting
                 if request.mask_image:
@@ -569,8 +583,8 @@ class RunwareProvider(ImageGenerationProvider):
         if request.guidance_scale and (request.guidance_scale < 1.0 or request.guidance_scale > 20.0):
             errors.append("Guidance scale must be between 1.0 and 20.0")
         
-        # Check image strength
-        if request.image_strength < 0.0 or request.image_strength > 1.0:
+        # Check image strength (only if provided)
+        if request.image_strength is not None and (request.image_strength < 0.0 or request.image_strength > 1.0):
             errors.append("Image strength must be between 0.0 and 1.0")
         
         return errors

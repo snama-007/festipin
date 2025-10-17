@@ -267,26 +267,26 @@ export default function MotifPage() {
                 >
                   <div className="max-w-2xl mx-auto">
                     <label className="block text-lg font-semibold text-gray-900 mb-4">
-                      Describe your decoration vision
+                      Describe your decoration vision (optional)
                     </label>
                     <textarea
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
-                      placeholder="e.g., A beautiful balloon arch with gold and white balloons, elegant centerpieces with candles..."
+                      placeholder="e.g., A beautiful balloon arch with gold and white balloons, elegant centerpieces with candles... (or leave empty to generate from image only)"
                       className="w-full h-32 px-6 py-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-[#6b46c1] focus:border-transparent resize-none text-gray-900 placeholder-gray-500"
                     />
                     
                     <div className="mt-6 flex items-center justify-center">
                       <motion.button
                         onClick={() => setShowImageGeneration(true)}
-                        disabled={!prompt.trim()}
+                        disabled={!prompt.trim() && !uploadedImage}
                         className={`inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-semibold text-lg transition-all ${
-                          prompt.trim()
+                          prompt.trim() || uploadedImage
                             ? 'bg-[#6b46c1] text-white hover:bg-[#5a3a9a] shadow-lg hover:shadow-xl'
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
-                        whileHover={prompt.trim() ? { scale: 1.05 } : {}}
-                        whileTap={prompt.trim() ? { scale: 0.95 } : {}}
+                        whileHover={prompt.trim() || uploadedImage ? { scale: 1.05 } : {}}
+                        whileTap={prompt.trim() || uploadedImage ? { scale: 0.95 } : {}}
                       >
                         <Wand2 className="w-6 h-6" />
                         Generate Decoration

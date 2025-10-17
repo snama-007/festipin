@@ -47,7 +47,7 @@ class GenerationRequest(BaseModel):
     
     # Reference image (for image-to-image, inpainting, outpainting)
     reference_image: Optional[str] = Field(None, description="Base64 encoded reference image")
-    image_strength: float = Field(0.8, ge=0.0, le=1.0, description="Strength of reference image influence")
+    image_strength: Optional[float] = Field(0.8, ge=0.0, le=1.0, description="Strength of reference image influence")
     mask_image: Optional[str] = Field(None, description="Base64 encoded mask for inpainting")
     
     # Advanced parameters
