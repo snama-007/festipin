@@ -20,10 +20,22 @@ class Settings(BaseSettings):
     API_CORS_ORIGINS: str = "http://localhost:9010,http://localhost:3000"
     
     # AI Services
-    OPENAI_API_KEY: str
-    GEMINI_API_KEY: str
+    OPENAI_API_KEY: str = "your_openai_api_key_here"
+    GEMINI_API_KEY: str = "your_gemini_api_key_here"
     OPENAI_MODEL: str = "gemini-2.0-flash"  # Using Gemini Flash for vision analysis
     GEMINI_MODEL: str = "gemini-2.0-flash"
+    
+    # Runware AI Configuration
+    RUNWARE_API_KEY: str = "your_runware_api_key_here"
+    RUNWARE_TIMEOUT: int = 30
+    RUNWARE_MAX_RETRIES: int = 3
+    RUNWARE_BASE_URL: str = "https://api.runware.com"
+    
+    # Service Management
+    PRIMARY_IMAGE_PROVIDER: str = "runware"
+    FALLBACK_IMAGE_PROVIDERS: str = "gemini"
+    SERVICE_HEALTH_CHECK_INTERVAL: int = 60
+    SERVICE_ROUTING_STRATEGY: str = "primary_first"  # primary_first, round_robin, least_loaded, cost_optimized, quality_focused, health_based
     
     # Firebase
     GOOGLE_APPLICATION_CREDENTIALS: str = "./firebase-credentials.json"

@@ -16,6 +16,7 @@ from .export import router as export_router
 from .generation import router as generation_router
 from .history import router as history_router
 from .performance import router as performance_router
+from .services import router as services_router
 
 # Main router
 router = APIRouter(prefix="/motif", tags=["Motif"])
@@ -31,5 +32,6 @@ router.include_router(export_router)
 router.include_router(generation_router)
 router.include_router(history_router)
 router.include_router(performance_router)
+router.include_router(services_router)
 
 __all__ = ["router"]

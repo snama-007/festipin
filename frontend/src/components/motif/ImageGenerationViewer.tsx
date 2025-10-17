@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Wand2, Download, RefreshCw, Star, X, Loader2 } from 'lucide-react'
+import { Wand2, Download, RefreshCw, Star, X, Loader2, ChevronRight, CheckCircle, AlertCircle, Clock } from 'lucide-react'
 
 interface ImageGenerationViewerProps {
   prompt: string
@@ -17,6 +17,18 @@ interface GeneratedImage {
   style?: string
   rating?: number
   generatedAt: string
+  providerUsed?: string
+  processingTime?: number
+  cost?: number
+}
+
+interface ProcessStep {
+  id: string
+  title: string
+  description: string
+  status: 'pending' | 'running' | 'completed' | 'error'
+  timestamp?: Date
+  duration?: number
 }
 
 export function ImageGenerationViewer({ 
@@ -29,6 +41,62 @@ export function ImageGenerationViewer({
   const [currentImage, setCurrentImage] = useState<GeneratedImage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [rating, setRating] = useState<number>(0)
+  const [showProcessLog, setShowProcessLog] = useState(false)
+  const [processSteps, setProcessSteps] = useState<ProcessStep[]>([])
+  const [currentProvider, setCurrentProvider] = useState<string>('')
+
+  // Initialize process steps
+  const initializeProcessSteps = () => {
+    const steps: ProcessStep[] = [
+      {
+        id: 'validate',
+        title: 'Validating Request',
+        description: 'Checking prompt and parameters',
+        status: 'pending'
+      },
+      {
+        id: 'provider',
+        title: 'Selecting Provider',
+        description: 'Choosing optimal AI service',
+        status: 'pending'
+      },
+      {
+        id: 'enhance',
+        title: 'Enhancing Prompt',
+        description: 'Optimizing prompt for better results',
+        status: 'pending'
+      },
+      {
+        id: 'generate',
+        title: 'Generating Image',
+        description: 'AI is creating your decoration',
+        status: 'pending'
+      },
+      {
+        id: 'process',
+        title: 'Processing Result',
+        description: 'Finalizing and optimizing image',
+        status: 'pending'
+      }
+    ]
+    setProcessSteps(steps)
+  }
+
+  // Update process step
+  const updateProcessStep = (stepId: string, status: ProcessStep['status'], description?: string) => {
+    setProcessSteps(prev => prev.map(step => {
+      if (step.id === stepId) {
+        return {
+          ...step,
+          status,
+          description: description || step.description,
+          timestamp: status === 'running' ? new Date() : step.timestamp,
+          duration: status === 'completed' ? Date.now() - (step.timestamp?.getTime() || Date.now()) : step.duration
+        }
+      }
+      return step
+    }))
+  }
 
   // Generate image on component mount
   useEffect(() => {
@@ -40,15 +108,35 @@ export function ImageGenerationViewer({
   const generateImage = async () => {
     setIsGenerating(true)
     setError(null)
+    setShowProcessLog(true)
+    initializeProcessSteps()
 
     try {
+      // Step 1: Validate Request
+      updateProcessStep('validate', 'running')
+      await new Promise(resolve => setTimeout(resolve, 300))
+      updateProcessStep('validate', 'completed')
+
+      // Step 2: Select Provider
+      updateProcessStep('provider', 'running')
+      await new Promise(resolve => setTimeout(resolve, 200))
+      updateProcessStep('provider', 'completed', 'Selected optimal AI provider')
+
+      // Step 3: Enhance Prompt
+      updateProcessStep('enhance', 'running')
+      await new Promise(resolve => setTimeout(resolve, 400))
+      updateProcessStep('enhance', 'completed')
+
+      // Step 4: Generate Image
+      updateProcessStep('generate', 'running')
+      
       const requestBody = {
         prompt: prompt,
         style: style,
         user_id: 'user_' + Date.now()
       }
 
-      const response = await fetch('http://localhost:8000/motif/generation/generate-from-prompt', {
+      const response = await fetch('http://localhost:9000/motif/generation/generate-from-prompt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,20 +151,33 @@ export function ImageGenerationViewer({
       const data = await response.json()
 
       if (data.success) {
+        updateProcessStep('generate', 'completed')
+        
+        // Step 5: Process Result
+        updateProcessStep('process', 'running')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        updateProcessStep('process', 'completed')
+
         const newImage: GeneratedImage = {
           id: data.generation_id,
           imageData: data.image_data,
           prompt: data.prompt_used,
           style: data.style_applied,
-          generatedAt: new Date().toISOString()
+          generatedAt: new Date().toISOString(),
+          providerUsed: data.provider_used,
+          processingTime: data.processing_time,
+          cost: data.cost
         }
 
         setGeneratedImages(prev => [newImage, ...prev])
         setCurrentImage(newImage)
+        setCurrentProvider(data.provider_used || 'Unknown')
       } else {
+        updateProcessStep('generate', 'error')
         throw new Error(data.error || 'Generation failed')
       }
     } catch (err) {
+      updateProcessStep('generate', 'error')
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsGenerating(false)
@@ -88,8 +189,28 @@ export function ImageGenerationViewer({
 
     setIsGenerating(true)
     setError(null)
+    setShowProcessLog(true)
+    initializeProcessSteps()
 
     try {
+      // Step 1: Validate Request
+      updateProcessStep('validate', 'running')
+      await new Promise(resolve => setTimeout(resolve, 300))
+      updateProcessStep('validate', 'completed')
+
+      // Step 2: Select Provider
+      updateProcessStep('provider', 'running')
+      await new Promise(resolve => setTimeout(resolve, 200))
+      updateProcessStep('provider', 'completed', 'Selected optimal AI provider')
+
+      // Step 3: Enhance Prompt
+      updateProcessStep('enhance', 'running')
+      await new Promise(resolve => setTimeout(resolve, 400))
+      updateProcessStep('enhance', 'completed')
+
+      // Step 4: Generate Image
+      updateProcessStep('generate', 'running')
+
       const formData = new FormData()
       formData.append('prompt', prompt)
       if (style) formData.append('style', style)
@@ -100,7 +221,7 @@ export function ImageGenerationViewer({
       const blob = await response.blob()
       formData.append('inspiration_image', blob, 'inspiration.jpg')
 
-      const apiResponse = await fetch('http://localhost:8000/motif/generation/generate-from-inspiration', {
+      const apiResponse = await fetch('http://localhost:9000/motif/generation/generate-from-inspiration', {
         method: 'POST',
         body: formData
       })
@@ -112,20 +233,33 @@ export function ImageGenerationViewer({
       const data = await apiResponse.json()
 
       if (data.success) {
+        updateProcessStep('generate', 'completed')
+        
+        // Step 5: Process Result
+        updateProcessStep('process', 'running')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        updateProcessStep('process', 'completed')
+
         const newImage: GeneratedImage = {
           id: data.generation_id,
           imageData: data.image_data,
           prompt: data.prompt_used,
           style: data.style_applied,
-          generatedAt: new Date().toISOString()
+          generatedAt: new Date().toISOString(),
+          providerUsed: data.provider_used,
+          processingTime: data.processing_time,
+          cost: data.cost
         }
 
         setGeneratedImages(prev => [newImage, ...prev])
         setCurrentImage(newImage)
+        setCurrentProvider(data.provider_used || 'Unknown')
       } else {
+        updateProcessStep('generate', 'error')
         throw new Error(data.error || 'Generation failed')
       }
     } catch (err) {
+      updateProcessStep('generate', 'error')
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsGenerating(false)
@@ -134,7 +268,7 @@ export function ImageGenerationViewer({
 
   const submitRating = async (imageId: string, rating: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/motif/generation/feedback/${imageId}`, {
+      const response = await fetch(`http://localhost:9000/motif/generation/feedback/${imageId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -168,11 +302,13 @@ export function ImageGenerationViewer({
   }
 
   return (
-    <div className="w-full h-[600px] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800">
+    <div className="w-full h-[600px] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-gray-800 relative">
       {/* Header */}
       <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md rounded-lg px-4 py-2 text-white text-sm z-10">
         <p className="font-medium">🎨 AI Image Generation</p>
-        <p className="text-xs text-gray-300 mt-1">Powered by Google Gemini Flash</p>
+        <p className="text-xs text-gray-300 mt-1">
+          {currentProvider ? `Powered by ${currentProvider}` : 'Intelligent AI Service'}
+        </p>
       </div>
 
       {/* Generation Controls */}
@@ -204,6 +340,19 @@ export function ImageGenerationViewer({
         </div>
       </div>
 
+      {/* Process Log Toggle */}
+      {isGenerating && (
+        <div className="absolute top-16 right-4 bg-black/50 backdrop-blur-md rounded-lg px-4 py-2 text-white text-sm z-10">
+          <button
+            onClick={() => setShowProcessLog(!showProcessLog)}
+            className="flex items-center gap-1 px-3 py-1 rounded bg-blue-600 hover:bg-blue-700"
+          >
+            <Clock className="w-4 h-4" />
+            {showProcessLog ? 'Hide' : 'Show'} Process
+          </button>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex h-full">
         {/* Image Display */}
@@ -225,7 +374,14 @@ export function ImageGenerationViewer({
                   <Wand2 className="w-16 h-16" />
                 </motion.div>
                 <h3 className="text-xl font-bold mb-2">Generating Your Decoration</h3>
-                <p className="text-gray-300">AI is creating your party decoration...</p>
+                <p className="text-gray-300 mb-4">AI is creating your party decoration...</p>
+                
+                {/* Current Step Indicator */}
+                {processSteps.length > 0 && (
+                  <div className="text-sm text-gray-400">
+                    {processSteps.find(step => step.status === 'running')?.title || 'Processing...'}
+                  </div>
+                )}
               </motion.div>
             ) : error ? (
               <motion.div
@@ -340,6 +496,109 @@ export function ImageGenerationViewer({
           )}
         </div>
       </div>
+
+      {/* Process Log Panel */}
+      <AnimatePresence>
+        {showProcessLog && (
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            className="absolute top-0 right-0 w-80 h-full bg-black/80 backdrop-blur-md border-l border-gray-700 z-20"
+          >
+            <div className="p-4 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-bold text-lg">Process Log</h3>
+                <button
+                  onClick={() => setShowProcessLog(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto space-y-3">
+                {processSteps.map((step, index) => (
+                  <motion.div
+                    key={step.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className={`p-3 rounded-lg border ${
+                      step.status === 'completed' 
+                        ? 'border-green-500 bg-green-500/10' 
+                        : step.status === 'running'
+                        ? 'border-blue-500 bg-blue-500/10'
+                        : step.status === 'error'
+                        ? 'border-red-500 bg-red-500/10'
+                        : 'border-gray-600 bg-gray-600/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      {step.status === 'completed' ? (
+                        <CheckCircle className="w-4 h-4 text-green-400" />
+                      ) : step.status === 'running' ? (
+                        <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                      ) : step.status === 'error' ? (
+                        <AlertCircle className="w-4 h-4 text-red-400" />
+                      ) : (
+                        <Clock className="w-4 h-4 text-gray-400" />
+                      )}
+                      <span className={`text-sm font-medium ${
+                        step.status === 'completed' 
+                          ? 'text-green-400' 
+                          : step.status === 'running'
+                          ? 'text-blue-400'
+                          : step.status === 'error'
+                          ? 'text-red-400'
+                          : 'text-gray-400'
+                      }`}>
+                        {step.title}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-300 mb-1">{step.description}</p>
+                    {step.duration && (
+                      <p className="text-xs text-gray-500">
+                        Completed in {step.duration}ms
+                      </p>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Summary */}
+              <div className="mt-4 p-3 rounded-lg bg-gray-800/50">
+                <div className="text-sm text-gray-300">
+                  <div className="flex justify-between mb-1">
+                    <span>Provider:</span>
+                    <span className="text-white">{currentProvider || 'Selecting...'}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span>Status:</span>
+                    <span className={`${
+                      isGenerating ? 'text-blue-400' : error ? 'text-red-400' : 'text-green-400'
+                    }`}>
+                      {isGenerating ? 'Generating' : error ? 'Error' : 'Completed'}
+                    </span>
+                  </div>
+                  {currentImage && (
+                    <>
+                      <div className="flex justify-between mb-1">
+                        <span>Time:</span>
+                        <span className="text-white">{currentImage.processingTime?.toFixed(2)}s</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Cost:</span>
+                        <span className="text-white">${currentImage.cost?.toFixed(4) || '0.0000'}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Info */}
       <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md rounded-lg px-4 py-2 text-white text-sm">

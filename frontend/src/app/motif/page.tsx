@@ -320,7 +320,7 @@ export default function MotifPage() {
             {
               icon: '🎨',
               title: 'AI Image Generation',
-              description: 'Generate beautiful party decorations using Google Gemini Flash AI'
+              description: 'Generate beautiful party decorations using intelligent AI services'
             },
             {
               icon: '🎭',
@@ -393,7 +393,7 @@ export default function MotifPage() {
             {[
               { step: '1', title: 'Describe', desc: 'Tell us your decoration vision' },
               { step: '2', title: 'Choose Style', desc: 'Select from preset themes' },
-              { step: '3', title: 'AI Generation', desc: 'Gemini Flash creates your design' },
+              { step: '3', title: 'AI Generation', desc: 'Intelligent AI creates your design' },
               { step: '4', title: 'Download', desc: 'Get your custom decoration' }
             ].map((item, idx) => (
               <motion.div

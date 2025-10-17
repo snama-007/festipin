@@ -82,53 +82,39 @@ class MotifGeminiGenerator:
                 return True
             
             genai.configure(api_key=self.api_key)
-            
-            # Try different model versions
-            model_versions = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro', 'gemini-pro-vision']
-            model_initialized = False
-            
-            for model_name in model_versions:
-                try:
-                    self.model = genai.GenerativeModel(model_name)
-                    await self._test_connection()
-                    logger.info(f"🎨 MotifGeminiGenerator initialized with {model_name}!")
-                    model_initialized = True
-                    break
-                except Exception as e:
-                    logger.warning(f"Failed to initialize with {model_name}: {e}")
-                    continue
-            
-            if not model_initialized:
-                logger.error("Failed to initialize with any Gemini model - falling back to mock mode")
+
+            # Note: Gemini is a text/multimodal model, not an image generation model
+            # We use it for text generation and image analysis, not actual image creation
+            # For now, we'll use mock mode for image generation
+            try:
+                # Use gemini-pro for text generation (can help with prompt enhancement)
+                self.model = genai.GenerativeModel('gemini-pro')
+                # Test connection with a simple prompt
+                test_response = await asyncio.to_thread(
+                    self.model.generate_content,
+                    "Hello",
+                    safety_settings=self.safety_settings
+                )
+                logger.info(f"🎨 MotifGeminiGenerator initialized with gemini-pro for prompt enhancement!")
+                logger.info(f"Note: Using mock mode for actual image generation (Gemini is text-only)")
+                # Even though model is connected, use mock for image generation
                 self.mock_mode = True
                 return True
-                
-            self.mock_mode = False
-            return True
+            except Exception as e:
+                logger.info(f"Gemini API not available (expected) - using mock mode for image generation")
+                logger.debug(f"Gemini init details: {e}")
+                self.mock_mode = True
+                return True
         except Exception as e:
             logger.error(f"Failed to initialize MotifGeminiGenerator: {e}")
             self.mock_mode = True
             return True
     
-    async def _test_connection(self):
-        """Test API connection"""
-        try:
-            # Simple test prompt
-            test_prompt = "Generate a simple test image"
-            response = await asyncio.to_thread(
-                self.model.generate_content,
-                test_prompt,
-                safety_settings=self.safety_settings
-            )
-            return True
-        except Exception as e:
-            logger.error(f"API connection test failed: {e}")
-            raise
-    
     async def generate_image_from_prompt(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         style: Optional[str] = None,
+        quality: str = "standard",
         user_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Generate image from text prompt only"""
@@ -356,10 +342,11 @@ class MotifGeminiGenerator:
             return False
     
     async def _mock_generation(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         style: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        inspiration_image: Optional[bytes] = None
     ) -> Dict[str, Any]:
         """Mock generation for testing when API key is not configured"""
         try:

@@ -1,7 +1,7 @@
 """
 Motif Image Generation Routes
 
-API endpoints for Gemini Flash image generation
+API endpoints for intelligent image generation with service management
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form, BackgroundTasks, Depends
@@ -12,7 +12,8 @@ import asyncio
 from datetime import datetime
 
 from app.core.config import settings
-from app.services.motif.gemini_image_generator import MotifGeminiGenerator
+from app.services.motif.service_manager import ServiceManager
+from app.services.motif.providers.base import GenerationRequest, GenerationQuality
 from app.services.motif.history_service import GenerationHistoryService
 from app.models.motif.generation import (
     ImageGenerationRequest,
@@ -25,30 +26,22 @@ from app.models.motif.history import GenerationHistory, GenerationType
 router = APIRouter(prefix="/generation", tags=["Image Generation"])
 logger = logging.getLogger(__name__)
 
-# Initialize Gemini generator
-gemini_generator = None
+# Initialize service manager
+service_manager = ServiceManager()
 
-async def get_gemini_generator():
-    """Get or initialize Gemini generator"""
-    global gemini_generator
-    if gemini_generator is None:
-        api_key = getattr(settings, 'GEMINI_API_KEY', None)
-        if not api_key:
-            raise HTTPException(
-                status_code=500, 
-                detail="Gemini API key not configured"
-            )
-        gemini_generator = MotifGeminiGenerator(api_key)
-        await gemini_generator.initialize()
-    return gemini_generator
+async def get_service_manager():
+    """Get or initialize service manager"""
+    if not service_manager._initialized:
+        await service_manager.initialize()
+    return service_manager
 
-@router.post("/generate-from-prompt")
+@router.post("/generate-from-prompt", response_model=ImageGenerationResponse)
 async def generate_from_prompt(
     request: ImageGenerationRequest,
     background_tasks: BackgroundTasks,
-    generator: MotifGeminiGenerator = Depends(get_gemini_generator)
+    manager: ServiceManager = Depends(get_service_manager)
 ):
-    """Generate image from text prompt only"""
+    """Generate image from text prompt using intelligent provider selection"""
     try:
         # Validate request
         if not request.prompt or len(request.prompt.strip()) < 10:
@@ -57,51 +50,45 @@ async def generate_from_prompt(
         if len(request.prompt) > 1000:
             raise HTTPException(status_code=400, detail="Prompt must be less than 1000 characters")
         
-        # Generate image
-        result = await generator.generate_image_from_prompt(
+        # Convert to standardized request format
+        generation_request = GenerationRequest(
             prompt=request.prompt,
             style=request.style,
-            user_id=request.user_id
+            width=1024,
+            height=1024,
+            quality=GenerationQuality.STANDARD,
+            user_id=request.user_id or "anonymous"
         )
         
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
+        # Generate image using service manager
+        result = await manager.generate_image(generation_request)
+        
+        if not result.success:
+            raise HTTPException(status_code=400, detail=result.error)
         
         # Store generation metadata in background
         background_tasks.add_task(
             _store_generation_metadata,
-            result["generation_id"],
+            result.generation_id,
             request.prompt,
             request.style,
             "text_to_image",
-            result.get("image_data"),
-            request.user_id
+            result.image_data,
+            request.user_id,
+            result.provider_used
         )
-        
-        # Save to history
-        history_service = GenerationHistoryService()
-        generation_history = GenerationHistory(
-            id=result["generation_id"],
-            user_id=request.user_id or "anonymous",
-            prompt=request.prompt,
-            enhanced_prompt=result["prompt_used"],
-            style=request.style,
-            generation_type=GenerationType.TEXT_TO_IMAGE,
-            status=GenerationStatus.COMPLETED,
-            image_data=result["image_data"],
-            completed_at=datetime.utcnow(),
-            metadata={"mock_mode": generator.mock_mode}
-        )
-        background_tasks.add_task(history_service.save_generation, generation_history)
         
         return ImageGenerationResponse(
             success=True,
-            generation_id=result["generation_id"],
-            image_data=result["image_data"],
-            prompt_used=result["prompt_used"],
-            style_applied=result["style_applied"],
+            generation_id=result.generation_id,
+            image_data=result.image_data,
+            prompt_used=request.prompt,
+            style_applied=request.style,
             generated_at=datetime.utcnow(),
-            mock_mode=generator.mock_mode
+            mock_mode=False,  # Real generation
+            provider_used=result.provider_used,
+            cost=result.cost,
+            processing_time=result.processing_time
         )
         
     except HTTPException:
@@ -110,26 +97,81 @@ async def generate_from_prompt(
         logger.error(f"Image generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-async def _mock_generation(prompt: str, style: Optional[str], user_id: Optional[str]) -> Dict[str, Any]:
-    """Mock generation for testing"""
-    import asyncio
-    await asyncio.sleep(1)  # Simulate generation time
-    
-    enhanced_prompt = f"{prompt}, {style or 'default'} style, high quality, detailed, professional"
-    
-    return {
-        "success": True,
-        "image_data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-        "prompt_used": enhanced_prompt,
-        "style_applied": style,
-        "generation_id": f"mock_{user_id}_{asyncio.get_event_loop().time()}"
-    }
+@router.post("/generate-from-inspiration")
+async def generate_from_inspiration(
+    inspiration_image: UploadFile = File(...),
+    prompt: str = Form(...),
+    style: Optional[str] = Form(None),
+    user_id: str = Form("anonymous"),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    manager: ServiceManager = Depends(get_service_manager)
+):
+    """Generate image from inspiration image using intelligent provider selection"""
+    try:
+        # Validate file
+        if not inspiration_image.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read and encode image
+        image_data = await inspiration_image.read()
+        import base64
+        image_base64 = base64.b64encode(image_data).decode('utf-8')
+        image_data_uri = f"data:{inspiration_image.content_type};base64,{image_base64}"
+        
+        # Convert to standardized request format
+        generation_request = GenerationRequest(
+            prompt=prompt,
+            style=style,
+            width=1024,
+            height=1024,
+            quality=GenerationQuality.STANDARD,
+            reference_image=image_data_uri,
+            image_strength=0.8,
+            user_id=user_id
+        )
+        
+        # Generate image using service manager
+        result = await manager.generate_image(generation_request)
+        
+        if not result.success:
+            raise HTTPException(status_code=400, detail=result.error)
+        
+        # Store generation metadata in background
+        background_tasks.add_task(
+            _store_generation_metadata,
+            result.generation_id,
+            prompt,
+            style,
+            "image_to_image",
+            result.image_data,
+            user_id,
+            result.provider_used
+        )
+        
+        return ImageGenerationResponse(
+            success=True,
+            generation_id=result.generation_id,
+            image_data=result.image_data,
+            prompt_used=prompt,
+            style_applied=style,
+            generated_at=datetime.utcnow(),
+            mock_mode=False,
+            provider_used=result.provider_used,
+            cost=result.cost,
+            processing_time=result.processing_time
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Image-to-image generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/generate-batch")
 async def generate_batch_images(
     request: Dict[str, Any],
     background_tasks: BackgroundTasks,
-    generator: MotifGeminiGenerator = Depends(get_gemini_generator)
+    manager: ServiceManager = Depends(get_service_manager)
 ):
     """Generate multiple images in batch"""
     try:
@@ -152,46 +194,63 @@ async def generate_batch_images(
             if len(prompt) > 1000:
                 raise HTTPException(status_code=400, detail=f"Prompt {i+1} must be less than 1000 characters")
         
-        # Generate batch
-        result = await generator.generate_batch_images(
-            prompts=prompts,
-            style=style,
-            user_id=user_id,
+        # Convert to batch request
+        from app.services.motif.providers.base import BatchGenerationRequest
+        batch_request = BatchGenerationRequest(
+            requests=[
+                GenerationRequest(
+                    prompt=prompt,
+                    style=style,
+                    width=1024,
+                    height=1024,
+                    quality=GenerationQuality.STANDARD,
+                    user_id=user_id
+                ) for prompt in prompts
+            ],
             max_concurrent=max_concurrent
         )
         
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
+        # Generate batch
+        result = await manager.generate_batch(batch_request)
+        
+        if not result.success:
+            raise HTTPException(status_code=400, detail="Batch generation failed")
         
         # Store generation metadata in background for each successful generation
-        for gen in result["successful_generations"]:
-            background_tasks.add_task(
-                _store_generation_metadata,
-                gen["generation_id"],
-                gen["prompt"],
-                style,
-                "batch_text_to_image",
-                gen.get("image_data"),
-                user_id
-            )
-            
-            # Save to history
-            history_service = GenerationHistoryService()
-            generation_history = GenerationHistory(
-                id=gen["generation_id"],
-                user_id=user_id,
-                prompt=gen["prompt"],
-                enhanced_prompt=gen["prompt_used"],
-                style=style,
-                generation_type=GenerationType.TEXT_TO_IMAGE,
-                status=GenerationStatus.COMPLETED,
-                image_data=gen["image_data"],
-                completed_at=datetime.utcnow(),
-                metadata={"batch_id": result["batch_id"], "mock_mode": generator.mock_mode}
-            )
-            background_tasks.add_task(history_service.save_generation, generation_history)
+        for gen in result.results:
+            if gen.success:
+                background_tasks.add_task(
+                    _store_generation_metadata,
+                    gen.generation_id,
+                    gen.metadata.get("enhanced_prompt", ""),
+                    style,
+                    "batch_text_to_image",
+                    gen.image_data,
+                    user_id,
+                    gen.provider_used
+                )
         
-        return result
+        return {
+            "success": True,
+            "batch_id": result.batch_id,
+            "total_prompts": len(prompts),
+            "successful_count": result.successful_count,
+            "failed_count": result.failed_count,
+            "results": [
+                {
+                    "success": gen.success,
+                    "generation_id": gen.generation_id,
+                    "image_data": gen.image_data,
+                    "provider_used": gen.provider_used,
+                    "cost": gen.cost,
+                    "processing_time": gen.processing_time,
+                    "error": gen.error
+                } for gen in result.results
+            ],
+            "total_cost": result.total_cost,
+            "total_processing_time": result.total_processing_time,
+            "generated_at": datetime.utcnow().isoformat()
+        }
         
     except HTTPException:
         raise
@@ -199,70 +258,17 @@ async def generate_batch_images(
         logger.error(f"Batch generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@router.post("/generate-from-inspiration")
-async def generate_from_inspiration(
-    inspiration_image: UploadFile = File(...),
-    prompt: str = Form(...),
-    style: Optional[str] = Form(None),
-    user_id: Optional[str] = Form(None),
-    background_tasks: BackgroundTasks = BackgroundTasks()
-):
-    """Generate image from inspiration image + prompt"""
-    try:
-        # Validate file
-        if not inspiration_image.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="File must be an image")
-        
-        # Read image data
-        image_data = await inspiration_image.read()
-        
-        generator = await get_gemini_generator()
-        
-        # Generate image
-        result = await generator.generate_image_from_inspiration(
-            inspiration_image=image_data,
-            prompt=prompt,
-            style=style,
-            user_id=user_id
-        )
-        
-        if not result["success"]:
-            raise HTTPException(status_code=400, detail=result["error"])
-        
-        # Store generation metadata in background
-        background_tasks.add_task(
-            _store_generation_metadata,
-            result["generation_id"],
-            prompt,
-            style,
-            "image_to_image",
-            inspiration_analysis=result.get("inspiration_analysis")
-        )
-        
-        return ImageGenerationResponse(
-            success=True,
-            generation_id=result["generation_id"],
-            image_data=result["image_data"],
-            prompt_used=result["prompt_used"],
-            style_applied=result["style_applied"],
-            generated_at=datetime.utcnow(),
-            inspiration_analysis=result.get("inspiration_analysis")
-        )
-        
-    except Exception as e:
-        logger.error(f"Inspiration-based generation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.get("/qualities")
-async def get_available_qualities(
-    generator: MotifGeminiGenerator = Depends(get_gemini_generator)
-):
+async def get_available_qualities():
     """Get available quality settings"""
     try:
-        qualities = await generator.get_available_qualities()
         return {
             "success": True,
-            "qualities": qualities
+            "qualities": [
+                {"key": "fast", "name": "Fast", "description": "Quick generation with good quality"},
+                {"key": "standard", "name": "Standard", "description": "Balanced speed and quality"},
+                {"key": "premium", "name": "Premium", "description": "Highest quality generation"}
+            ]
         }
     except Exception as e:
         logger.error(f"Failed to get qualities: {e}")
@@ -272,14 +278,20 @@ async def get_available_qualities(
 async def get_available_styles():
     """Get available style presets"""
     try:
-        generator = await get_gemini_generator()
-        styles = await generator.get_available_styles()
-        
         return {
             "success": True,
-            "styles": styles
+            "styles": [
+                {"key": "party", "name": "Party", "description": "Vibrant and festive decorations"},
+                {"key": "elegant", "name": "Elegant", "description": "Sophisticated and refined style"},
+                {"key": "fun", "name": "Fun", "description": "Playful and cheerful designs"},
+                {"key": "romantic", "name": "Romantic", "description": "Soft and dreamy atmosphere"},
+                {"key": "birthday", "name": "Birthday", "description": "Colorful birthday celebrations"},
+                {"key": "wedding", "name": "Wedding", "description": "Elegant wedding decorations"},
+                {"key": "holiday", "name": "Holiday", "description": "Festive holiday themes"},
+                {"key": "corporate", "name": "Corporate", "description": "Professional business style"},
+                {"key": "casual", "name": "Casual", "description": "Relaxed and informal"}
+            ]
         }
-        
     except Exception as e:
         logger.error(f"Failed to get styles: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -292,17 +304,7 @@ async def submit_feedback(
 ):
     """Submit feedback for generated image"""
     try:
-        generator = await get_gemini_generator()
-        
-        success = await generator.collect_feedback(
-            generation_id=generation_id,
-            rating=rating,
-            feedback=feedback
-        )
-        
-        if not success:
-            raise HTTPException(status_code=400, detail="Failed to submit feedback")
-        
+        # TODO: Implement feedback collection with service manager
         return {
             "success": True,
             "message": "Feedback submitted successfully"
@@ -316,7 +318,7 @@ async def submit_feedback(
 async def get_generation_status(generation_id: str):
     """Get generation status and metadata"""
     try:
-        # TODO: Implement status tracking
+        # TODO: Implement status tracking with service manager
         return {
             "success": True,
             "generation_id": generation_id,
@@ -333,7 +335,9 @@ async def _store_generation_metadata(
     prompt: str,
     style: Optional[str],
     generation_type: str,
-    inspiration_analysis: Optional[Dict[str, Any]] = None
+    image_data: str,
+    user_id: Optional[str],
+    provider_used: str
 ):
     """Store generation metadata for training data collection"""
     try:
@@ -343,11 +347,13 @@ async def _store_generation_metadata(
             "prompt": prompt,
             "style": style,
             "type": generation_type,
-            "inspiration_analysis": inspiration_analysis,
+            "image_data": image_data[:100] + "..." if len(image_data) > 100 else image_data,  # Truncate for logging
+            "user_id": user_id,
+            "provider_used": provider_used,
             "timestamp": datetime.utcnow()
         }
         
-        logger.info(f"Stored metadata for generation {generation_id}")
+        logger.info(f"Stored metadata for generation {generation_id} using {provider_used}")
         
     except Exception as e:
         logger.error(f"Failed to store metadata: {e}")

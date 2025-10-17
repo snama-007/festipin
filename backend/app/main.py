@@ -7,38 +7,42 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-import logging
 from pathlib import Path
 
 from app.core.config import settings
-from app.core.logging import setup_logging
+from app.core.logger import logger, log_info, log_error
+from app.middleware.logging_middleware import (
+    LoggingMiddleware,
+    PerformanceLoggingMiddleware,
+    ErrorLoggingMiddleware,
+)
 from app.api.routes import input, vision, plan, export, samples, orchestration, extraction, motif
-
-# Setup logging
-logger = setup_logging()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
-    logger.info("🚀 Starting Parx Planner Backend...")
-    logger.info(f"Environment: {settings.ENVIRONMENT}")
-    logger.info(f"Debug mode: {settings.DEBUG}")
-    
+    log_info(
+        "Starting Parx Planner Backend",
+        environment=settings.ENVIRONMENT,
+        debug=settings.DEBUG,
+        version="1.0.0",
+    )
+
     # Initialize services
     try:
         # TODO: Initialize Redis connection
         # TODO: Initialize Firestore connection
         # TODO: Initialize Cloud Storage
-        logger.info("✅ All services initialized successfully")
+        log_info("All services initialized successfully")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize services: {e}")
+        log_error("Failed to initialize services", error=str(e), error_type=type(e).__name__)
         raise
-    
+
     yield
-    
+
     # Cleanup
-    logger.info("🛑 Shutting down Parx Planner Backend...")
+    log_info("Shutting down Parx Planner Backend")
     # TODO: Close Redis connection
     # TODO: Close Firestore connection
 
@@ -52,6 +56,11 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
+
+# Add logging middleware (must be added before other middleware)
+app.add_middleware(ErrorLoggingMiddleware)
+app.add_middleware(PerformanceLoggingMiddleware, slow_request_threshold=2.0)  # 2 seconds
+app.add_middleware(LoggingMiddleware)
 
 # CORS Middleware
 app.add_middleware(
@@ -121,7 +130,13 @@ app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 # Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    log_error(
+        "Unhandled exception",
+        error=str(exc),
+        error_type=type(exc).__name__,
+        path=request.url.path,
+        method=request.method,
+    )
     return JSONResponse(
         status_code=500,
         content={
