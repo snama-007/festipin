@@ -234,7 +234,7 @@ Run the test:
 python test_installation.py
 
 # In another terminal:
-curl http://localhost:8000/health
+curl http://localhost:9000/health
 ```
 
 ---
@@ -276,7 +276,7 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 
 # 4. Access API docs
-# Open: http://localhost:8000/docs
+# Open: http://localhost:9000/docs
 ```
 
 ---
@@ -340,7 +340,7 @@ cat install.log
 - [ ] Redis installed and running
 - [ ] Playwright browsers installed
 - [ ] Test script runs successfully
-- [ ] Can access http://localhost:8000/docs
+- [ ] Can access http://localhost:9000/docs
 
 ---
 

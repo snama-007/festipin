@@ -105,13 +105,21 @@ class LocalMemoryStore:
             except Exception as e:
                 logger.warning("Failed to clean up old file", file=str(event_file), error=str(e))
     
+    def generate_party_id(self) -> str:
+        """Generate unique party ID in format: fp<year><5digits>"""
+        import random
+        year = datetime.utcnow().year
+        random_digits = random.randint(10000, 99999)
+        return f"fp{year}A{random_digits}"
+    
     def generate_event_id(self) -> str:
         """Generate unique event ID"""
         return f"evt_{uuid.uuid4().hex[:12]}"
     
-    async def create_event(self, inputs: List[Dict[str, Any]], metadata: Dict[str, Any] = None) -> str:
+    async def create_event(self, inputs: List[Dict[str, Any]], metadata: Dict[str, Any] = None, custom_event_id: str = None) -> str:
         """Create new event and return event_id"""
-        event_id = self.generate_event_id()
+        # Use custom event ID if provided, otherwise generate a party ID
+        event_id = custom_event_id or self.generate_party_id()
         
         event_state = EventState(
             event_id=event_id,
@@ -124,7 +132,7 @@ class LocalMemoryStore:
         
         await self.store_event_state(event_state)
         
-        logger.info("Created new event", event_id=event_id, input_count=len(inputs))
+        logger.info("Created new event", event_id=event_id, input_count=len(inputs), custom_id=custom_event_id is not None)
         return event_id
     
     async def store_event_state(self, event_state: EventState):

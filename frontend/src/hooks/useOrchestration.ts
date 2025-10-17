@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { getWorkflowStatus } from '@/services/api';
 
 export interface AgentUpdate {
   type: 'agent_update' | 'connection' | 'status_response' | 'pong';
@@ -38,8 +39,38 @@ export function useOrchestration(eventId: string | null) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const connect = useCallback(() => {
+  const fetchInitialStatus = useCallback(async () => {
     if (!eventId) return;
+    
+    try {
+      console.log('📊 Fetching initial workflow status for:', eventId);
+      const status = await getWorkflowStatus(eventId);
+      
+      setState((prev) => ({
+        ...prev,
+        workflowStatus: status.workflow_status as any,
+      }));
+      
+      // Process completed agents from the status
+      if (status.agent_results) {
+        const completedAgents = Object.keys(status.agent_results);
+        setState((prev) => ({
+          ...prev,
+          completedAgents: [...new Set([...prev.completedAgents, ...completedAgents])],
+        }));
+        
+        console.log('🤖 Initial completed agents:', completedAgents);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch initial status:', error);
+    }
+  }, [eventId]);
+
+  const connect = useCallback(() => {
+    if (!eventId) {
+      console.log('❌ No eventId provided for WebSocket connection');
+      return;
+    }
 
     const wsUrl = `ws://localhost:9000/ws/orchestration/${eventId}`;
     console.log('🔌 Connecting to WebSocket:', wsUrl);
@@ -53,6 +84,9 @@ export function useOrchestration(eventId: string | null) {
         isConnected: true,
         workflowStatus: 'running',
       }));
+
+      // Fetch initial status to show completed agents
+      fetchInitialStatus();
 
       // Send heartbeat every 30 seconds
       const heartbeat = setInterval(() => {
@@ -111,6 +145,8 @@ export function useOrchestration(eventId: string | null) {
 
     ws.onerror = (error) => {
       console.error('❌ WebSocket error:', error);
+      console.error('❌ WebSocket URL:', wsUrl);
+      console.error('❌ Event ID:', eventId);
       setState((prev) => ({
         ...prev,
         isConnected: false,
@@ -118,18 +154,20 @@ export function useOrchestration(eventId: string | null) {
       }));
     };
 
-    ws.onclose = () => {
-      console.log('🔌 WebSocket disconnected');
+    ws.onclose = (event) => {
+      console.log('🔌 WebSocket disconnected:', event.code, event.reason);
       setState((prev) => ({
         ...prev,
         isConnected: false,
       }));
 
-      // Attempt reconnect after 3 seconds
-      reconnectTimeoutRef.current = setTimeout(() => {
-        console.log('🔄 Attempting reconnect...');
-        connect();
-      }, 3000);
+      // Attempt reconnect after 3 seconds if not a normal closure
+      if (event.code !== 1000) {
+        console.log('🔄 Attempting to reconnect in 3 seconds...');
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connect();
+        }, 3000);
+      }
     };
 
     wsRef.current = ws;

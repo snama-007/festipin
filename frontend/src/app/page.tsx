@@ -112,6 +112,7 @@ export default function PartyPlanOS() {
   // Agent orchestration
   const {
     isProcessing: isAgentProcessing,
+    currentEventId,
     workflowStatus,
     error: agentError,
     startOrchestrationWorkflow,
@@ -488,24 +489,97 @@ export default function PartyPlanOS() {
   const transitionToBuildMode = async () => {
     setIsTransitioning(true)
     
-    // Generate unique party ID
-    const partyId = generatePartyId()
-    
     // Clear any existing logs before transition
     setAgentLogs([])
     
     // Clear search mode hover states
     setHoveredChip(null)
     
-    // Add initial logs before navigation
+    // Add initial logs before sending request
     addAgentLog('system_info', '🎉 Starting party plan generation...')
     addAgentLog('user_input', `User request: ${pinterestUrl || chatMessage}`, undefined, {
       type: tab,
       hasImage: !!selectedFile
     })
     
-    // Navigate to build page with party ID
-    router.push(`/build/${partyId}`)
+    try {
+      // Create orchestration inputs based on party data
+      const inputs: OrchestrationInput[] = [
+        {
+          source_type: tab === 'url' ? 'url' : 'text',
+          content: pinterestUrl || chatMessage,
+          tags: [
+            'party_planning',
+            extractedEventData?.eventType || 'general',
+            extractedEventData?.theme || 'unknown'
+          ],
+          metadata: {
+            extracted_data: extractedEventData,
+            validation_result: validationResult,
+            extraction_result: extractionResult,
+            has_image: !!selectedFile,
+            timestamp: new Date().toISOString()
+          }
+        }
+      ]
+
+      const metadata = {
+        user_agent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+        source_data: {
+          extractedEventData,
+          validationResult,
+          extractionResult,
+          pinterestUrl,
+          chatMessage,
+          selectedFile: selectedFile ? {
+            name: selectedFile.name,
+            size: selectedFile.size,
+            type: selectedFile.type
+          } : null,
+          tab
+        }
+      }
+
+      console.log('📤 Sending orchestration request to backend...')
+      
+      // Start orchestration and get party ID from backend
+      const response = await startOrchestrationWorkflow(inputs, metadata)
+      const partyId = response.event_id
+      
+      if (!partyId) {
+        throw new Error('Failed to get party ID from backend')
+      }
+      
+      console.log('✅ Received party ID from backend:', partyId)
+      
+      // Store extracted data in localStorage for the build page
+      const partyData = {
+        partyId,
+        extractedEventData,
+        validationResult,
+        extractionResult,
+        pinterestUrl,
+        chatMessage,
+        selectedFile: selectedFile ? {
+          name: selectedFile.name,
+          size: selectedFile.size,
+          type: selectedFile.type
+        } : null,
+        tab,
+        timestamp: new Date().toISOString()
+      }
+      
+      localStorage.setItem(`party_${partyId}`, JSON.stringify(partyData))
+      
+      // Navigate to build page with backend-generated party ID
+      router.push(`/build/${partyId}`)
+      
+    } catch (error) {
+      console.error('❌ Failed to start orchestration:', error)
+      setError('Failed to start party planning. Please try again.')
+      setIsTransitioning(false)
+    }
   }
 
   // Clear search state when exiting build mode
@@ -1271,14 +1345,6 @@ export default function PartyPlanOS() {
               />
             
             <div className="relative z-10">
-              <motion.h1
-                className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-8"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.4 }}
-              >
-                Celebrate Effortlessly.!
-              </motion.h1>
 
                 {/* Location Input - First */}
                 <motion.div

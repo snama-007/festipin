@@ -293,10 +293,14 @@ export const useAgentOrchestration = () => {
 
       // Start polling for status updates
       pollWorkflowStatus(response.event_id)
+      
+      // Return the response so caller can get the event_id immediately
+      return response
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start orchestration')
       setIsProcessing(false)
+      throw err
     }
   }, [])
 

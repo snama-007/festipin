@@ -51,7 +51,7 @@ export function GenerationHistoryViewer({ userId }: GenerationHistoryProps) {
         ...(showFavoritesOnly && { favorites_only: 'true' })
       })
 
-      const response = await fetch(`http://localhost:8000/motif/history/${userId}?${params}`)
+      const response = await fetch(`http://localhost:9000/motif/history/${userId}?${params}`)
       const data = await response.json()
 
       if (response.ok && data.success) {
@@ -79,7 +79,7 @@ export function GenerationHistoryViewer({ userId }: GenerationHistoryProps) {
 
   const toggleFavorite = async (generationId: string, isFavorite: boolean) => {
     try {
-      const response = await fetch('http://localhost:8000/motif/history/favorite', {
+      const response = await fetch('http://localhost:9000/motif/history/favorite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

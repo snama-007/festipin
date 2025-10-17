@@ -66,7 +66,7 @@ function DynamicSceneElements() {
   useEffect(() => {
     const fetchSceneData = async () => {
       try {
-        const response = await fetch('http://localhost:8000/motif/scene/test-room-scene')
+        const response = await fetch('http://localhost:9000/motif/scene/test-room-scene')
         const data = await response.json()
         
         if (data.success && data.scene) {
@@ -407,7 +407,7 @@ export function Scene3DViewer({ imageUrl }: Scene3DViewerProps) {
   useEffect(() => {
     const fetchElementCounts = async () => {
       try {
-        const response = await fetch('http://localhost:8000/motif/scene/test-room-scene')
+        const response = await fetch('http://localhost:9000/motif/scene/test-room-scene')
         const data = await response.json()
         
         if (data.success && data.scene) {

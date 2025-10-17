@@ -89,7 +89,7 @@ class SimpleOrchestrator:
                                 metadata: Dict[str, Any] = None) -> str:
         """Start new orchestration workflow"""
         try:
-            # Create new event
+            # Create new event (backend will generate party ID)
             event_id = await create_event(inputs, metadata)
             
             # Initialize workflow state
@@ -137,7 +137,10 @@ class SimpleOrchestrator:
             for agent_name, agent_func in agents_to_run:
                 try:
                     # Check if agent should run
-                    if self._should_run_agent(agent_name, state):
+                    should_run = self._should_run_agent(agent_name, state)
+                    logger.info(f"Agent {agent_name} should run: {should_run}", event_id=state["event_id"])
+                    
+                    if should_run:
                         logger.info(f"Running agent: {agent_name}", event_id=state["event_id"])
                         state = await agent_func(state)
                         
@@ -173,17 +176,15 @@ class SimpleOrchestrator:
         if agent_name == "theme_agent":
             return "input_classifier" in state["agent_results"]
         
+        # For a complete party plan, run all agents regardless of input classification
         if agent_name == "cake_agent":
-            classified_inputs = state["agent_results"].get("input_classifier", {}).get("classified_inputs", {})
-            return "cake" in classified_inputs
+            return "theme_agent" in state["agent_results"]
         
         if agent_name == "venue_agent":
-            classified_inputs = state["agent_results"].get("input_classifier", {}).get("classified_inputs", {})
-            return "venue" in classified_inputs
+            return "theme_agent" in state["agent_results"]
         
         if agent_name == "catering_agent":
-            classified_inputs = state["agent_results"].get("input_classifier", {}).get("classified_inputs", {})
-            return "catering" in classified_inputs
+            return "theme_agent" in state["agent_results"]
         
         if agent_name == "budget_agent":
             # Run after theme agent completes
@@ -195,7 +196,10 @@ class SimpleOrchestrator:
         
         if agent_name == "planner_agent":
             # Run after vendor agent completes
-            return "vendor_agent" in state["agent_results"]
+            vendor_completed = "vendor_agent" in state["agent_results"]
+            logger.info(f"Planner agent condition check: vendor_agent in results = {vendor_completed}", 
+                       event_id=state["event_id"])
+            return vendor_completed
         
         return False
     
@@ -332,17 +336,18 @@ class SimpleOrchestrator:
     async def _cake_agent_node(self, state: OrchestrationState) -> OrchestrationState:
         """Cake agent node"""
         try:
-            # Get classified inputs
-            classified_inputs = state["agent_results"].get("input_classifier", {}).get("classified_inputs", {})
-            cake_inputs = classified_inputs.get("cake", [])
-            
-            if not cake_inputs:
-                logger.info("No cake inputs found, skipping cake agent", event_id=state["event_id"])
-                return state
-            
+            # ✅ Broadcast: Starting
+            await self._broadcast_agent_update(
+                state["event_id"],
+                "cake_agent",
+                "running",
+                message="Searching for cake options..."
+            )
+
+            # Use all inputs for cake planning (not just classified cake inputs)
             agent_input = AgentInput(
                 agent_type=AgentType.CAKE,
-                inputs=cake_inputs,
+                inputs=state["inputs"],
                 context=state["execution_context"],
                 event_id=state["event_id"]
             )
@@ -366,6 +371,15 @@ class SimpleOrchestrator:
                 result.execution_time
             )
             
+            # ✅ Broadcast: Completed
+            await self._broadcast_agent_update(
+                state["event_id"],
+                "cake_agent",
+                "completed",
+                result=result.result,
+                message="Found cake options!"
+            )
+            
             logger.info("Cake agent completed", 
                        event_id=state["event_id"],
                        cake_type=result.result.get("cake_type"))
@@ -380,6 +394,13 @@ class SimpleOrchestrator:
                 {"error": str(e)},
                 "error",
                 str(e)
+            )
+            await self._broadcast_agent_update(
+                state["event_id"],
+                "cake_agent",
+                "error",
+                error=str(e),
+                message=f"Cake agent failed: {str(e)}"
             )
         
         return state
@@ -508,24 +529,46 @@ class SimpleOrchestrator:
     async def _planner_agent_node(self, state: OrchestrationState) -> OrchestrationState:
         """Planner agent node - final assembly"""
         try:
+            logger.info("Starting planner agent", event_id=state["event_id"])
+            
             # Assemble final plan from all agent results
+            try:
+                recommendations = self._generate_recommendations(state["agent_results"])
+                next_steps = self._generate_next_steps(state["agent_results"])
+            except Exception as e:
+                logger.error("Failed to generate recommendations or next steps", 
+                            event_id=state["event_id"], error=str(e))
+                recommendations = ["Review the party plan and make adjustments as needed"]
+                next_steps = ["1️⃣ Review and approve this party plan"]
+            
             final_plan = {
                 "event_summary": {
                     "theme": state["agent_results"].get("theme_agent", {}).get("primary_theme", "general"),
                     "total_budget": state["agent_results"].get("budget_agent", {}).get("total_budget", {}),
                     "created_at": datetime.utcnow().isoformat()
                 },
-                "agent_results": state["agent_results"],
-                "recommendations": self._generate_recommendations(state["agent_results"]),
-                "next_steps": self._generate_next_steps(state["agent_results"])
+                "agent_results": {k: v for k, v in state["agent_results"].items() if k != "planner_agent"},
+                "recommendations": recommendations,
+                "next_steps": next_steps
             }
             
+            logger.info("Final plan assembled", event_id=state["event_id"], plan_keys=list(final_plan.keys()))
+            
             state["final_plan"] = final_plan
+            state["agent_results"]["planner_agent"] = final_plan
             state["current_agent"] = "planner_agent"
             state["workflow_status"] = "completed"
             
             # Update memory store
             await set_final_plan(state["event_id"], final_plan)
+            await update_agent_result(
+                state["event_id"], 
+                "planner_agent", 
+                final_plan,
+                "completed",
+                None,
+                0.0  # Planner doesn't have execution time
+            )
             
             logger.info("Planner agent completed - final plan assembled", 
                        event_id=state["event_id"])
