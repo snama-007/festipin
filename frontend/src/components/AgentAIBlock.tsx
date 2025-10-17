@@ -12,6 +12,8 @@ interface AgentAIBlockProps {
   onInteraction?: (action: string, value?: any) => void
   onPositionChange?: (x: number, y: number) => void
   onAgentAction?: (action: 'pause' | 'restart' | 'delete') => void
+  onPlayClick?: (agentKey: string) => void
+  isActive?: boolean
   className?: string
   borderColor?: string
   initialX?: number
@@ -27,6 +29,8 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   onInteraction,
   onPositionChange,
   onAgentAction,
+  onPlayClick,
+  isActive = false,
   className = '',
   borderColor,
   initialX = 0,
@@ -138,6 +142,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   const renderAgentImage = () => {
     return (
       <div className="relative w-full h-32 bg-gradient-to-br from-white/90 to-gray-100/90 rounded-2xl overflow-hidden">
+
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
             className="text-5xl filter drop-shadow-lg"
@@ -329,27 +334,28 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
 
   return (
     <motion.div
-      className={`group relative w-64 h-80 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-visible ${isDragging ? 'cursor-grabbing' : 'cursor-move'} ${className}`}
+      className={`group relative w-64 h-80 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-visible ${isDragging ? 'cursor-grabbing' : 'cursor-move'} ${isActive ? 'ring-4 ring-blue-400/50' : ''} ${className}`}
       style={{
         border: `3px solid transparent`,
         background: `linear-gradient(white, white) padding-box, linear-gradient(135deg, ${borderGradient}) border-box`,
         transform: `translate(${position.x}px, ${position.y}px)`,
-        zIndex: isDragging ? 1000 : 5
+        zIndex: isDragging ? 1000 : (isActive ? 20 : 5),
+        opacity: isActive ? 1 : 0.6
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onMouseDown={handleMouseDown}
       whileHover={{ 
-        scale: isDragging ? 1 : 1.08,
-        y: isDragging ? 0 : -8,
-        rotateY: isDragging ? 0 : 5,
+        scale: isDragging ? 1 : (isActive ? 1.1 : 1.05),
+        y: isDragging ? 0 : (isActive ? -12 : -6),
+        rotateY: isDragging ? 0 : (isActive ? 8 : 3),
         boxShadow: `0 25px 50px ${getStatusGlow()}`
       }}
       initial={{ opacity: 0, y: 30, scale: 0.8, rotateX: -15 }}
       animate={{ 
-        opacity: 1, 
+        opacity: isActive ? 1 : 0.6, 
         y: 0, 
-        scale: isDragging ? 1.05 : 1, 
+        scale: isDragging ? 1.05 : (isActive ? 1.05 : 1), 
         rotateX: 0,
         rotateZ: isDragging ? 2 : 0
       }}
@@ -362,11 +368,28 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     >
 
       {/* Animated background gradient */}
-      <motion.div 
-        className={`absolute inset-0 bg-gradient-to-br ${borderGradient} opacity-10`}
-        animate={isHovered ? { opacity: 0.15 } : { opacity: 0.05 }}
-        transition={{ duration: 0.3 }}
-      />
+          <motion.div 
+            className={`absolute inset-0 bg-gradient-to-br ${borderGradient} opacity-10`}
+            animate={isHovered ? { opacity: 0.3 } : { opacity: 0.05 }}
+            transition={{ duration: 0.3 }}
+          />
+
+      {/* Active Agent Blue Overlay */}
+      {isActive && (
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-3xl"
+          initial={{ opacity: 0 }}
+          animate={{ 
+            opacity: [0.2, 0.4, 0.2],
+            scale: [1, 1.02, 1]
+          }}
+          transition={{ 
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      )}
       
       {/* Agent Image Section (40%) */}
       <div className="h-32 p-4">
@@ -382,12 +405,37 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         {/* Agent name with menu */}
         <div className="relative">
           <motion.div 
-            className="text-sm font-semibold text-gray-700 text-center truncate pr-8"
+            className="text-sm font-semibold text-gray-700 text-center truncate pr-8 pl-8"
             animate={isHovered ? { scale: 1.05 } : { scale: 1 }}
             transition={{ duration: 0.2 }}
           >
             {agentName}
           </motion.div>
+          
+          {/* Play Button - Bottom Left Corner */}
+          <motion.button
+            className="absolute left-0 bottom-0 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-600 hover:text-blue-600 shadow-lg backdrop-blur-sm border border-gray-200/50 cursor-pointer z-10"
+            onClick={(e) => {
+              e.stopPropagation()
+              onPlayClick?.(agentKey)
+            }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            title="Edit Agent"
+            animate={isActive ? { 
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0]
+            } : {}}
+            transition={{ 
+              duration: 2,
+              repeat: isActive ? Infinity : 0,
+              ease: "easeInOut"
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </motion.button>
           
           {/* 3-Dots Menu Button - Absolute positioned */}
           <motion.button
@@ -480,7 +528,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       <AnimatePresence>
         {isHovered && (
           <motion.div
-            className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"
+            className="absolute inset-0 bg-black/20 rounded-3xl"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
