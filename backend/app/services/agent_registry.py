@@ -482,34 +482,96 @@ class BudgetAgent(BaseAgent):
         logger.info("Budget agent initialized")
     
     async def execute(self, agent_input: AgentInput) -> AgentOutput:
-        """Generate budget estimate"""
+        """Generate budget estimate from actual agent results"""
         # Get context from other agents
         agent_results = agent_input.context.get('agent_results', {})
-        
+
         budget_breakdown = {}
         total_min = 0
         total_max = 0
-        
-        # Estimate costs based on agent results
-        for category, costs in self.cost_estimates.items():
-            if category in agent_results:
-                budget_breakdown[category] = costs
+
+        # Extract actual venue costs
+        venue_result = agent_results.get('venue_agent', {})
+        if venue_result and venue_result.get('recommended_venues'):
+            venue = venue_result['recommended_venues'][0]
+            venue_price = venue.get('daily_price', 0)
+            if venue_price > 0:
+                budget_breakdown['venue'] = {'min': venue_price, 'max': venue_price}
+                total_min += venue_price
+                total_max += venue_price
+            else:
+                # Free venue (permit required)
+                budget_breakdown['venue'] = {'min': 0, 'max': 0, 'note': 'Free (permit required)'}
+
+        # Extract actual bakery/cake costs
+        cake_result = agent_results.get('cake_agent', {})
+        if cake_result and cake_result.get('recommended_bakeries'):
+            bakery = cake_result['recommended_bakeries'][0]
+            price_range = bakery.get('price_range', {})
+            if price_range:
+                cake_min = price_range.get('small', 80)
+                cake_max = price_range.get('large', 300)
+                budget_breakdown['cake'] = {'min': cake_min, 'max': cake_max}
+                total_min += cake_min
+                total_max += cake_max
+        elif cake_result:
+            # Use estimated cost from cake agent if available
+            estimated_cost = cake_result.get('estimated_cost', self.cost_estimates.get('cake', {}))
+            if estimated_cost:
+                budget_breakdown['cake'] = estimated_cost
+                total_min += estimated_cost.get('min', 0)
+                total_max += estimated_cost.get('max', 0)
+
+        # Extract actual catering costs
+        catering_result = agent_results.get('catering_agent', {})
+        if catering_result and catering_result.get('estimated_total_cost'):
+            catering_cost = catering_result['estimated_total_cost']
+            budget_breakdown['catering'] = catering_cost
+            total_min += catering_cost.get('min', 0)
+            total_max += catering_cost.get('max', 0)
+
+        # Extract actual vendor costs by category
+        vendor_result = agent_results.get('vendor_agent', {})
+        if vendor_result and vendor_result.get('vendors_by_category'):
+            vendors_by_cat = vendor_result['vendors_by_category']
+
+            for category, vendors in vendors_by_cat.items():
+                if vendors and len(vendors) > 0:
+                    # Use average price from recommended vendors
+                    avg_price = vendors[0].get('avg_price', 0)
+                    if avg_price > 0:
+                        budget_breakdown[category] = {
+                            'min': int(avg_price * 0.8),  # -20% estimate
+                            'max': int(avg_price * 1.2)   # +20% estimate
+                        }
+                        total_min += budget_breakdown[category]['min']
+                        total_max += budget_breakdown[category]['max']
+
+        # Add default estimates for missing categories
+        if not budget_breakdown:
+            # Fallback to static estimates if no agent results available
+            budget_breakdown = self.cost_estimates.copy()
+            for costs in budget_breakdown.values():
                 total_min += costs['min']
                 total_max += costs['max']
-        
+
         budget_plan = {
             "total_budget": {"min": total_min, "max": total_max},
             "breakdown": budget_breakdown,
             "recommendations": self._get_budget_recommendations(total_min, total_max),
-            "cost_saving_tips": self._get_cost_saving_tips()
+            "cost_saving_tips": self._get_cost_saving_tips(),
+            "data_source": "actual_agent_results" if agent_results else "estimates"
         }
-        
+
         return AgentOutput(
             agent_type=self.agent_type,
             result=budget_plan,
-            confidence=0.7,
+            confidence=0.9 if agent_results else 0.6,
             execution_time=0.0,
-            metadata={"budget_calculated": True}
+            metadata={
+                "budget_calculated": True,
+                "based_on_actual_data": bool(agent_results)
+            }
         )
     
     def _get_budget_recommendations(self, min_cost: int, max_cost: int) -> List[str]:
@@ -565,9 +627,389 @@ class BudgetAgent(BaseAgent):
         return True  # Budget agent can always run
 
 
+class VenueAgentEnhanced(BaseAgent):
+    """Enhanced venue agent using mock database"""
+
+    def __init__(self):
+        super().__init__(AgentType.VENUE)
+        self.mock_db = None
+
+    async def initialize(self) -> None:
+        """Initialize venue agent with mock database"""
+        from app.services.mock_database import get_mock_database
+        self.mock_db = get_mock_database()
+        logger.info("Venue agent initialized with mock database")
+
+    async def execute(self, agent_input: AgentInput) -> AgentOutput:
+        """Find venues using mock database"""
+        # Extract requirements from inputs and context
+        guest_count = self._extract_guest_count(agent_input.inputs)
+        budget = self._extract_budget(agent_input.context)
+        theme = agent_input.context.get('theme_result', {}).get('primary_theme', 'general')
+
+        # Query mock PostgreSQL
+        db_venues = self.mock_db.query_venues(
+            min_capacity=guest_count,
+            max_price=budget,
+            limit=5
+        )
+
+        # Query mock RAG (vector search)
+        rag_venues = self.mock_db.semantic_search_venues(
+            query=f"{theme} party venue for {guest_count} guests",
+            k=3
+        )
+
+        # Combine results (prefer RAG matches but include DB results)
+        all_venues = {v['id']: v for v in db_venues}
+        for v in rag_venues:
+            all_venues[v['id']] = v
+
+        recommendations = list(all_venues.values())[:3]
+
+        result = {
+            "recommended_venues": recommendations,
+            "total_matches": len(all_venues),
+            "search_criteria": {
+                "guest_count": guest_count,
+                "budget": budget,
+                "theme": theme
+            },
+            "data_source": "mock_database"
+        }
+
+        return AgentOutput(
+            agent_type=self.agent_type,
+            result=result,
+            confidence=0.85,
+            execution_time=0.0,
+            metadata={"venue_search_complete": True, "mock_data": True}
+        )
+
+    def _extract_guest_count(self, inputs: List[Dict[str, Any]]) -> int:
+        """Extract guest count from inputs"""
+        for inp in inputs:
+            content = inp.get('content', '').lower()
+            if 'guest' in content or 'people' in content:
+                # Simple extraction - in production use NLP
+                import re
+                numbers = re.findall(r'\d+', content)
+                if numbers:
+                    return int(numbers[0])
+        return 50  # Default
+
+    def _extract_budget(self, context: Dict[str, Any]) -> int:
+        """Extract budget from context"""
+        agent_results = context.get('agent_results', {})
+        budget_result = agent_results.get('budget_agent', {})
+        total_budget = budget_result.get('total_budget', {})
+        return total_budget.get('max', 1000)
+
+    def get_input_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "inputs": {"type": "array"},
+                "context": {"type": "object"}
+            }
+        }
+
+    def get_output_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "recommended_venues": {"type": "array"},
+                "total_matches": {"type": "integer"},
+                "search_criteria": {"type": "object"}
+            }
+        }
+
+    def can_handle(self, inputs: List[Dict[str, Any]]) -> bool:
+        return True
+
+
+class VendorAgentEnhanced(BaseAgent):
+    """Enhanced vendor agent using mock database"""
+
+    def __init__(self):
+        super().__init__(AgentType.VENDOR)
+        self.mock_db = None
+
+    async def initialize(self) -> None:
+        """Initialize vendor agent with mock database"""
+        from app.services.mock_database import get_mock_database
+        self.mock_db = get_mock_database()
+        logger.info("Vendor agent initialized with mock database")
+
+    async def execute(self, agent_input: AgentInput) -> AgentOutput:
+        """Find vendors using mock database"""
+        # Get context from other agents
+        agent_results = agent_input.context.get('agent_results', {})
+        theme = agent_results.get('theme_agent', {}).get('primary_theme', 'general')
+        budget = agent_results.get('budget_agent', {}).get('total_budget', {})
+
+        # Search for different categories of vendors
+        vendors_by_category = {}
+        categories = ['decorations', 'entertainment', 'photography', 'rentals']
+
+        for category in categories:
+            # Mock PostgreSQL query
+            db_vendors = self.mock_db.query_vendors(
+                category=category,
+                max_price=budget.get('max', 5000),
+                min_rating=4.0,
+                limit=3
+            )
+
+            # Mock RAG search
+            rag_vendors = self.mock_db.semantic_search_vendors(
+                query=f"{category} vendor for {theme} party",
+                k=2
+            )
+
+            # Combine results
+            all_vendors = {v['id']: v for v in db_vendors}
+            for v in rag_vendors:
+                all_vendors[v['id']] = v
+
+            vendors_by_category[category] = list(all_vendors.values())[:2]
+
+        result = {
+            "vendors_by_category": vendors_by_category,
+            "total_vendors_found": sum(len(v) for v in vendors_by_category.values()),
+            "search_criteria": {
+                "theme": theme,
+                "budget": budget
+            },
+            "data_source": "mock_database"
+        }
+
+        return AgentOutput(
+            agent_type=self.agent_type,
+            result=result,
+            confidence=0.8,
+            execution_time=0.0,
+            metadata={"vendor_search_complete": True, "mock_data": True}
+        )
+
+    def get_input_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "context": {"type": "object"}
+            }
+        }
+
+    def get_output_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "vendors_by_category": {"type": "object"},
+                "total_vendors_found": {"type": "integer"}
+            }
+        }
+
+    def can_handle(self, inputs: List[Dict[str, Any]]) -> bool:
+        return True
+
+
+class CakeAgentEnhanced(BaseAgent):
+    """Enhanced cake agent using mock bakery database"""
+
+    def __init__(self):
+        super().__init__(AgentType.CAKE)
+        self.mock_db = None
+
+    async def initialize(self) -> None:
+        """Initialize cake agent with mock database"""
+        from app.services.mock_database import get_mock_database
+        self.mock_db = get_mock_database()
+        logger.info("Cake agent initialized with mock database")
+
+    async def execute(self, agent_input: AgentInput) -> AgentOutput:
+        """Find bakeries using mock database"""
+        # Extract theme from context
+        theme_context = agent_input.context.get('theme_result', {})
+        primary_theme = theme_context.get('primary_theme', 'general')
+
+        # Extract budget (rough estimate for cake)
+        budget = 200  # Default cake budget
+
+        # Query mock database for bakeries
+        db_bakeries = self.mock_db.query_bakeries(
+            max_budget=budget,
+            custom_designs=True,
+            limit=3
+        )
+
+        # Mock RAG search for similar cake designs
+        rag_bakeries = self.mock_db.semantic_search_bakeries(
+            query=f"{primary_theme} birthday cake design",
+            k=2
+        )
+
+        # Combine results
+        all_bakeries = {b['id']: b for b in db_bakeries}
+        for b in rag_bakeries:
+            all_bakeries[b['id']] = b
+
+        recommendations = list(all_bakeries.values())[:3]
+
+        result = {
+            "recommended_bakeries": recommendations,
+            "cake_style": "themed",
+            "theme": primary_theme,
+            "decorations": self._get_theme_cake_decorations(primary_theme),
+            "estimated_cost": {"min": 80, "max": 300},
+            "data_source": "mock_database"
+        }
+
+        return AgentOutput(
+            agent_type=self.agent_type,
+            result=result,
+            confidence=0.85,
+            execution_time=0.0,
+            metadata={"bakery_search_complete": True, "mock_data": True}
+        )
+
+    def _get_theme_cake_decorations(self, theme: str) -> List[str]:
+        """Get cake decorations based on theme"""
+        decoration_map = {
+            'jungle': ['animal figurines', 'leaf patterns', 'safari colors'],
+            'space': ['planet toppers', 'star sprinkles', 'galaxy frosting'],
+            'princess': ['crown topper', 'pink frosting', 'sparkles'],
+            'superhero': ['superhero figurines', 'cityscape design', 'cape details'],
+            'unicorn': ['unicorn horn', 'rainbow layers', 'magical sprinkles'],
+            'dinosaur': ['dino topper', 'volcano design', 'prehistoric colors']
+        }
+        return decoration_map.get(theme, ['basic decorations', 'colored frosting'])
+
+    def get_input_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "inputs": {"type": "array"},
+                "context": {"type": "object"}
+            }
+        }
+
+    def get_output_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "recommended_bakeries": {"type": "array"},
+                "cake_style": {"type": "string"},
+                "estimated_cost": {"type": "object"}
+            }
+        }
+
+    def can_handle(self, inputs: List[Dict[str, Any]]) -> bool:
+        return True
+
+
+class CateringAgentEnhanced(BaseAgent):
+    """Enhanced catering agent using mock database"""
+
+    def __init__(self):
+        super().__init__(AgentType.CATERING)
+        self.mock_db = None
+
+    async def initialize(self) -> None:
+        """Initialize catering agent with mock database"""
+        from app.services.mock_database import get_mock_database
+        self.mock_db = get_mock_database()
+        logger.info("Catering agent initialized with mock database")
+
+    async def execute(self, agent_input: AgentInput) -> AgentOutput:
+        """Find caterers using mock database"""
+        # Extract requirements
+        guest_count = self._extract_guest_count(agent_input.inputs)
+        dietary_needs = self._extract_dietary_needs(agent_input.inputs)
+        budget_per_person = 20  # Default
+
+        # Query mock database
+        db_caterers = self.mock_db.query_caterers(
+            max_price_per_person=budget_per_person,
+            dietary_needs=dietary_needs,
+            limit=3
+        )
+
+        # Calculate total catering cost
+        total_cost = {
+            "min": min([c['price_per_person'] for c in db_caterers] or [12]) * guest_count,
+            "max": max([c['price_per_person'] for c in db_caterers] or [20]) * guest_count
+        }
+
+        result = {
+            "recommended_caterers": db_caterers,
+            "guest_count": guest_count,
+            "dietary_accommodations": dietary_needs,
+            "estimated_total_cost": total_cost,
+            "data_source": "mock_database"
+        }
+
+        return AgentOutput(
+            agent_type=self.agent_type,
+            result=result,
+            confidence=0.8,
+            execution_time=0.0,
+            metadata={"catering_search_complete": True, "mock_data": True}
+        )
+
+    def _extract_guest_count(self, inputs: List[Dict[str, Any]]) -> int:
+        """Extract guest count from inputs"""
+        for inp in inputs:
+            content = inp.get('content', '').lower()
+            if 'guest' in content or 'people' in content:
+                import re
+                numbers = re.findall(r'\d+', content)
+                if numbers:
+                    return int(numbers[0])
+        return 30  # Default
+
+    def _extract_dietary_needs(self, inputs: List[Dict[str, Any]]) -> List[str]:
+        """Extract dietary needs from inputs"""
+        needs = []
+        keywords = {
+            'vegetarian': 'Vegetarian',
+            'vegan': 'Vegan',
+            'gluten': 'Gluten-Free',
+            'nut': 'Nut-Free'
+        }
+
+        for inp in inputs:
+            content = inp.get('content', '').lower()
+            for keyword, formal_name in keywords.items():
+                if keyword in content:
+                    needs.append(formal_name)
+
+        return needs if needs else ['Vegetarian']  # Default
+
+    def get_input_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "inputs": {"type": "array"}
+            }
+        }
+
+    def get_output_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "recommended_caterers": {"type": "array"},
+                "guest_count": {"type": "integer"},
+                "estimated_total_cost": {"type": "object"}
+            }
+        }
+
+    def can_handle(self, inputs: List[Dict[str, Any]]) -> bool:
+        return True
+
+
 class AgentRegistry:
     """Registry for managing agents"""
-    
+
     def __init__(self):
         self.agents: Dict[AgentType, BaseAgent] = {}
         self.initialized = False
@@ -622,11 +1064,17 @@ def get_agent_registry() -> AgentRegistry:
     global _agent_registry
     if _agent_registry is None:
         _agent_registry = AgentRegistry()
-        
+
         # Register default agents
         _agent_registry.register_agent(AgentType.INPUT_CLASSIFIER, InputClassifierAgent())
         _agent_registry.register_agent(AgentType.THEME, ThemeAgent())
-        _agent_registry.register_agent(AgentType.CAKE, CakeAgent())
+
+        # Register enhanced agents with mock database support
+        _agent_registry.register_agent(AgentType.CAKE, CakeAgentEnhanced())
+        _agent_registry.register_agent(AgentType.VENUE, VenueAgentEnhanced())
+        _agent_registry.register_agent(AgentType.CATERING, CateringAgentEnhanced())
+        _agent_registry.register_agent(AgentType.VENDOR, VendorAgentEnhanced())
+
         _agent_registry.register_agent(AgentType.BUDGET, BudgetAgent())
-    
+
     return _agent_registry

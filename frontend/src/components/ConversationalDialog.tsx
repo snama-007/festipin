@@ -44,16 +44,18 @@ export const ConversationalDialog: React.FC<ConversationalDialogProps> = ({
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white/20 backdrop-blur-2xl rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/30"
+        className="bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/50"
         style={{
           background: `
-            linear-gradient(135deg, rgba(255, 182, 193, 0.3) 0%, rgba(255, 192, 203, 0.25) 50%, rgba(255, 218, 185, 0.2) 100%),
-            radial-gradient(circle at 30% 20%, rgba(255, 182, 193, 0.4) 0%, transparent 50%)
+            linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 50%, rgba(255, 255, 255, 0.95) 100%),
+            radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 192, 203, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(255, 218, 185, 0.05) 0%, transparent 50%)
           `,
           boxShadow: `
-            0 8px 32px rgba(255, 182, 193, 0.5),
-            inset 0 1px 0 rgba(255, 255, 255, 0.4),
-            0 0 0 1px rgba(255, 255, 255, 0.2)
+            0 8px 32px rgba(255, 182, 193, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8),
+            0 0 0 1px rgba(255, 255, 255, 0.3)
           `
         }}
       >
@@ -124,14 +126,14 @@ export const ConversationalDialog: React.FC<ConversationalDialogProps> = ({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-6 rounded-2xl backdrop-blur-sm border border-white/40"
+            className="mb-6 p-6 rounded-2xl backdrop-blur-sm border border-white/60"
             style={{
               background: `
-                linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.2) 100%)
+                linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.7) 100%)
               `,
               boxShadow: `
-                0 8px 32px rgba(255, 182, 193, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.4)
+                0 8px 32px rgba(255, 182, 193, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8)
               `
             }}
           >
@@ -153,35 +155,35 @@ export const ConversationalDialog: React.FC<ConversationalDialogProps> = ({
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {extractedData.eventType && (
-                <div className="p-4 rounded-xl bg-white/30 backdrop-blur-sm border border-white/40">
+                <div className="p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/60">
                   <div className="text-sm text-gray-600 mb-1">Event Type</div>
                   <div className="font-medium text-gray-800">{extractedData.eventType}</div>
                 </div>
               )}
               
               {extractedData.theme && (
-                <div className="p-4 rounded-xl bg-white/30 backdrop-blur-sm border border-white/40">
+                <div className="p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/60">
                   <div className="text-sm text-gray-600 mb-1">Theme</div>
                   <div className="font-medium text-gray-800">{extractedData.theme}</div>
                 </div>
               )}
               
               {extractedData.age && (
-                <div className="p-4 rounded-xl bg-white/30 backdrop-blur-sm border border-white/40">
+                <div className="p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/60">
                   <div className="text-sm text-gray-600 mb-1">Age</div>
                   <div className="font-medium text-gray-800">{extractedData.age} years old</div>
                 </div>
               )}
               
               {extractedData.honoreeName && (
-                <div className="p-4 rounded-xl bg-white/30 backdrop-blur-sm border border-white/40">
+                <div className="p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/60">
                   <div className="text-sm text-gray-600 mb-1">Celebrating</div>
                   <div className="font-medium text-gray-800">{extractedData.honoreeName}</div>
                 </div>
               )}
               
               {extractedData.guestCount && (
-                <div className="p-4 rounded-xl bg-white/30 backdrop-blur-sm border border-white/40">
+                <div className="p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/60">
                   <div className="text-sm text-gray-600 mb-1">Guests</div>
                   <div className="font-medium text-gray-800">
                     {extractedData.guestCount.adults + extractedData.guestCount.kids} total
@@ -191,10 +193,13 @@ export const ConversationalDialog: React.FC<ConversationalDialogProps> = ({
               )}
               
               {extractedData.location && (
-                <div className="p-4 rounded-xl bg-white/30 backdrop-blur-sm border border-white/40">
+                <div className="p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-white/60">
                   <div className="text-sm text-gray-600 mb-1">Location</div>
                   <div className="font-medium text-gray-800">
-                    {extractedData.location.type === 'Home' ? 'At Home' : extractedData.location.name}
+                    {extractedData.location.type === 'Home' ? 'At Home' : 
+                     extractedData.location.name ? extractedData.location.name : 
+                     extractedData.location.address ? extractedData.location.address :
+                     extractedData.location.type || 'Location specified'}
                   </div>
                 </div>
               )}
@@ -207,7 +212,7 @@ export const ConversationalDialog: React.FC<ConversationalDialogProps> = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mb-6 p-4 rounded-xl bg-yellow-50/80 backdrop-blur-sm border border-yellow-200"
+              className="mb-6 p-4 rounded-xl bg-yellow-100/90 backdrop-blur-sm border border-yellow-300"
             >
               <div className="flex items-start gap-3">
                 <div className="text-yellow-600 text-xl">⚠️</div>
@@ -266,7 +271,7 @@ export const ConversationalDialog: React.FC<ConversationalDialogProps> = ({
           
           <motion.button
             onClick={handleExit}
-            className="w-full px-6 py-3 text-gray-600 border border-white/30 rounded-xl hover:bg-white/20 transition-all duration-300 backdrop-blur-sm font-medium"
+            className="w-full px-6 py-3 text-gray-700 border border-white/60 rounded-xl hover:bg-white/60 transition-all duration-300 backdrop-blur-sm font-medium bg-white/40"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >

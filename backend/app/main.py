@@ -16,7 +16,7 @@ from app.middleware.logging_middleware import (
     PerformanceLoggingMiddleware,
     ErrorLoggingMiddleware,
 )
-from app.api.routes import input, vision, plan, export, samples, orchestration, extraction, motif
+from app.api.routes import input, vision, plan, export, samples, orchestration, extraction, motif, websocket
 
 
 @asynccontextmanager
@@ -103,6 +103,7 @@ app.include_router(samples.router, prefix="/api/v1", tags=["Samples"])
 app.include_router(orchestration.router, prefix="/api/v1", tags=["Orchestration"])
 app.include_router(extraction.router, tags=["Data Extraction"])
 app.include_router(motif.router, tags=["Motif"])
+app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time agent updates
 
 # Mount static files for local storage (development)
 # Note: Must be mounted AFTER CORS middleware but BEFORE routes

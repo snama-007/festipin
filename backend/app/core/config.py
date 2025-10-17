@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # API Configuration
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8000
+    API_PORT: int = 9000
     API_CORS_ORIGINS: str = "http://localhost:9010,http://localhost:3000"
     
     # AI Services

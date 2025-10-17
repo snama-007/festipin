@@ -317,7 +317,7 @@ log_metrics(
 logger.info(
     "Incoming request",
     method="POST",
-    url="http://localhost:8000/api/generate",
+    url="http://localhost:9000/api/generate",
     path="/api/generate",
     client_ip="127.0.0.1",
     user_agent="Mozilla/5.0...",

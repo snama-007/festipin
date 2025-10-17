@@ -49,8 +49,41 @@ class SimpleOrchestrator:
     def __init__(self, memory_store: Optional[LocalMemoryStore] = None):
         self.memory_store = memory_store or LocalMemoryStore()
         self.agent_registry = get_agent_registry()
-        
+        self.ws_manager = None  # Will be set on first use
+
         logger.info("Simple orchestrator initialized")
+
+    async def _broadcast_agent_update(self, event_id: str, agent_name: str,
+                                      status: str, result: Optional[Dict] = None,
+                                      message: Optional[str] = None, error: Optional[str] = None):
+        """Broadcast agent update via WebSocket"""
+        try:
+            # Import lazily to avoid circular dependency
+            if self.ws_manager is None:
+                from app.api.routes.websocket import manager
+                self.ws_manager = manager
+
+            update = {
+                "type": "agent_update",
+                "agent": agent_name,
+                "status": status,  # "running", "completed", "error"
+            }
+
+            if message:
+                update["message"] = message
+            if result:
+                update["result"] = result
+            if error:
+                update["error"] = error
+
+            await self.ws_manager.send_agent_update(event_id, update)
+
+        except Exception as e:
+            # Don't fail workflow if WebSocket broadcast fails
+            logger.warning("Failed to broadcast WebSocket update",
+                          event_id=event_id,
+                          agent=agent_name,
+                          error=str(e))
     
     async def start_orchestration(self, inputs: List[Dict[str, Any]], 
                                 metadata: Dict[str, Any] = None) -> str:
@@ -217,57 +250,83 @@ class SimpleOrchestrator:
     async def _theme_agent_node(self, state: OrchestrationState) -> OrchestrationState:
         """Theme agent node"""
         try:
+            # ✅ Broadcast: Starting
+            await self._broadcast_agent_update(
+                state["event_id"],
+                "theme_agent",
+                "running",
+                message="Analyzing party theme..."
+            )
+
             # Get classified inputs
             classified_inputs = state["agent_results"].get("input_classifier", {}).get("classified_inputs", {})
             theme_inputs = classified_inputs.get("theme", state["inputs"])
-            
+
             if not theme_inputs:
                 logger.warning("No theme inputs found", event_id=state["event_id"])
                 return state
-            
+
             agent_input = AgentInput(
                 agent_type=AgentType.THEME,
                 inputs=theme_inputs,
                 context=state["execution_context"],
                 event_id=state["event_id"]
             )
-            
+
             # Execute theme agent
             result = await self.agent_registry.execute_agent(
                 AgentType.THEME, agent_input
             )
-            
+
             # Update state
             state["agent_results"]["theme_agent"] = result.result
             state["current_agent"] = "theme_agent"
             state["execution_context"]["theme_result"] = result.result
-            
+
             # Update memory store
             await update_agent_result(
-                state["event_id"], 
-                "theme_agent", 
+                state["event_id"],
+                "theme_agent",
                 result.result,
                 "completed",
                 None,
                 result.execution_time
             )
-            
-            logger.info("Theme agent completed", 
+
+            # ✅ Broadcast: Completed
+            theme = result.result.get("primary_theme", "general")
+            await self._broadcast_agent_update(
+                state["event_id"],
+                "theme_agent",
+                "completed",
+                result=result.result,
+                message=f"Detected {theme} theme!"
+            )
+
+            logger.info("Theme agent completed",
                        event_id=state["event_id"],
-                       theme=result.result.get("primary_theme"))
-            
+                       theme=theme)
+
         except Exception as e:
-            logger.error("Theme agent failed", 
-                        event_id=state["event_id"], 
+            logger.error("Theme agent failed",
+                        event_id=state["event_id"],
                         error=str(e))
             await update_agent_result(
-                state["event_id"], 
-                "theme_agent", 
+                state["event_id"],
+                "theme_agent",
                 {"error": str(e)},
                 "error",
                 str(e)
             )
-        
+
+            # ✅ Broadcast: Error
+            await self._broadcast_agent_update(
+                state["event_id"],
+                "theme_agent",
+                "error",
+                error=str(e)
+            )
+
         return state
     
     async def _cake_agent_node(self, state: OrchestrationState) -> OrchestrationState:
@@ -486,33 +545,169 @@ class SimpleOrchestrator:
         return state
     
     def _generate_recommendations(self, agent_results: Dict[str, Any]) -> List[str]:
-        """Generate recommendations based on agent results"""
+        """Generate intelligent recommendations based on all agent results"""
         recommendations = []
-        
+
+        # Theme-based recommendations
         theme_result = agent_results.get("theme_agent", {})
         if theme_result:
             theme = theme_result.get("primary_theme", "general")
-            recommendations.append(f"Focus on {theme} theme decorations")
-        
+            colors = theme_result.get("colors", [])
+            activities = theme_result.get("activities", [])
+
+            recommendations.append(f"🎨 Focus on {theme} theme with {', '.join(colors[:2])} color scheme")
+
+            if activities:
+                recommendations.append(f"🎯 Plan {activities[0]} as a main activity")
+
+        # Venue-based recommendations
+        venue_result = agent_results.get("venue_agent", {})
+        if venue_result:
+            recommended_venues = venue_result.get("recommended_venues", [])
+            if recommended_venues:
+                top_venue = recommended_venues[0]
+                venue_name = top_venue.get("name", "venue")
+                venue_price = top_venue.get("daily_price", 0)
+
+                if venue_price == 0:
+                    recommendations.append(f"📍 {venue_name} is free - just need a permit!")
+                elif venue_price < 500:
+                    recommendations.append(f"📍 {venue_name} is affordable at ${venue_price}/day")
+                else:
+                    recommendations.append(f"📍 Consider {venue_name} for a premium venue experience")
+
+        # Cake-based recommendations
+        cake_result = agent_results.get("cake_agent", {})
+        if cake_result:
+            recommended_bakeries = cake_result.get("recommended_bakeries", [])
+            if recommended_bakeries:
+                top_bakery = recommended_bakeries[0]
+                bakery_name = top_bakery.get("name", "bakery")
+                custom = top_bakery.get("custom_designs", False)
+
+                if custom:
+                    recommendations.append(f"🎂 {bakery_name} offers custom designs perfect for your theme")
+                else:
+                    recommendations.append(f"🎂 {bakery_name} has affordable cake options")
+
+        # Catering-based recommendations
+        catering_result = agent_results.get("catering_agent", {})
+        if catering_result:
+            recommended_caterers = catering_result.get("recommended_caterers", [])
+            if recommended_caterers:
+                dietary = catering_result.get("dietary_accommodations", [])
+                if dietary:
+                    recommendations.append(f"🍽️ Found caterers with {', '.join(dietary[:2])} options")
+
+        # Budget-based recommendations
         budget_result = agent_results.get("budget_agent", {})
         if budget_result:
-            total_max = budget_result.get("total_budget", {}).get("max", 0)
-            if total_max > 1500:
-                recommendations.append("Consider booking vendors early for better rates")
-            else:
-                recommendations.append("Focus on DIY elements to stay within budget")
-        
-        return recommendations
+            total_budget = budget_result.get("total_budget", {})
+            total_min = total_budget.get("min", 0)
+            total_max = total_budget.get("max", 0)
+
+            if total_max > 0:
+                recommendations.append(f"💰 Estimated budget: ${total_min:,}-${total_max:,}")
+
+                if total_max > 2000:
+                    recommendations.append("💡 Book vendors 2-3 months in advance for better rates")
+                elif total_max > 1000:
+                    recommendations.append("💡 Compare quotes from multiple vendors to save money")
+                else:
+                    recommendations.append("💡 Focus on DIY elements and home venue to stay in budget")
+
+        # Vendor-based recommendations
+        vendor_result = agent_results.get("vendor_agent", {})
+        if vendor_result:
+            vendors_by_category = vendor_result.get("vendors_by_category", {})
+            total_vendors = sum(len(v) for v in vendors_by_category.values())
+
+            if total_vendors > 0:
+                recommendations.append(f"🏪 Found {total_vendors} vendors across {len(vendors_by_category)} categories")
+
+        # General recommendations
+        if len(recommendations) < 5:
+            recommendations.append("📋 Create a detailed timeline at least 1 month before the event")
+            recommendations.append("📧 Send invitations 2-3 weeks in advance")
+
+        return recommendations[:8]  # Limit to 8 recommendations
     
     def _generate_next_steps(self, agent_results: Dict[str, Any]) -> List[str]:
-        """Generate next steps for the user"""
-        return [
-            "Review and approve the generated plan",
-            "Contact suggested vendors for quotes",
-            "Book venue and key vendors",
-            "Create detailed timeline",
-            "Send invitations to guests"
-        ]
+        """Generate intelligent next steps based on agent results"""
+        next_steps = []
+
+        # Step 1: Always review the plan
+        next_steps.append("1️⃣ Review and approve this party plan")
+
+        # Step 2: Venue booking
+        venue_result = agent_results.get("venue_agent", {})
+        if venue_result and venue_result.get("recommended_venues"):
+            venue_count = len(venue_result.get("recommended_venues", []))
+            next_steps.append(f"2️⃣ Contact {venue_count} recommended venues for availability and booking")
+        else:
+            next_steps.append("2️⃣ Search for and book a suitable venue")
+
+        # Step 3: Vendor contacts
+        vendor_result = agent_results.get("vendor_agent", {})
+        if vendor_result:
+            vendors_by_category = vendor_result.get("vendors_by_category", {})
+            if vendors_by_category:
+                categories = list(vendors_by_category.keys())
+                next_steps.append(f"3️⃣ Request quotes from {', '.join(categories[:2])} vendors")
+            else:
+                next_steps.append("3️⃣ Contact recommended vendors for quotes")
+        else:
+            next_steps.append("3️⃣ Search for and contact party vendors")
+
+        # Step 4: Cake order
+        cake_result = agent_results.get("cake_agent", {})
+        if cake_result and cake_result.get("recommended_bakeries"):
+            bakery_name = cake_result.get("recommended_bakeries", [{}])[0].get("name", "bakery")
+            next_steps.append(f"4️⃣ Order custom cake from {bakery_name} (at least 2 weeks ahead)")
+        else:
+            next_steps.append("4️⃣ Order or arrange for party cake")
+
+        # Step 5: Catering
+        catering_result = agent_results.get("catering_agent", {})
+        if catering_result and catering_result.get("recommended_caterers"):
+            dietary = catering_result.get("dietary_accommodations", [])
+            if dietary:
+                next_steps.append(f"5️⃣ Arrange catering with {', '.join(dietary)} options")
+            else:
+                next_steps.append("5️⃣ Finalize catering menu and confirm guest count")
+        else:
+            next_steps.append("5️⃣ Arrange food and catering for the party")
+
+        # Step 6: Decorations and theme
+        theme_result = agent_results.get("theme_agent", {})
+        if theme_result:
+            theme = theme_result.get("primary_theme", "party")
+            next_steps.append(f"6️⃣ Purchase or arrange {theme}-themed decorations")
+        else:
+            next_steps.append("6️⃣ Purchase decorations and party supplies")
+
+        # Step 7: Budget confirmation
+        budget_result = agent_results.get("budget_agent", {})
+        if budget_result:
+            total_budget = budget_result.get("total_budget", {})
+            total_max = total_budget.get("max", 0)
+            if total_max > 0:
+                next_steps.append(f"7️⃣ Confirm budget allocation (~${total_max:,} total)")
+            else:
+                next_steps.append("7️⃣ Review and finalize budget")
+        else:
+            next_steps.append("7️⃣ Finalize party budget")
+
+        # Step 8: Invitations
+        next_steps.append("8️⃣ Send invitations 2-3 weeks before the party")
+
+        # Step 9: Timeline
+        next_steps.append("9️⃣ Create day-of timeline and assign responsibilities")
+
+        # Step 10: Final checks
+        next_steps.append("🔟 Confirm all bookings 1 week before the event")
+
+        return next_steps
     
     async def get_workflow_status(self, event_id: str) -> Optional[Dict[str, Any]]:
         """Get current workflow status"""

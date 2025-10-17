@@ -121,25 +121,8 @@ export default function PartyPlanOS() {
   const [planComponents, setPlanComponents] = useState<PlanComponent[]>([])
   const [chatInput, setChatInput] = useState('')
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const [leftPanelWidth, setLeftPanelWidth] = useState(30) // Percentage
-  const [isResizing, setIsResizing] = useState(false)
-  const [hoveredPanel, setHoveredPanel] = useState<'left' | 'right' | null>(null)
-  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = useState(false)
-  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   
-  // Drag and drop state
-  const [draggedItem, setDraggedItem] = useState<any>(null)
-  const [canvasComponents, setCanvasComponents] = useState<any[]>([])
-  const [isDraggingOverCanvas, setIsDraggingOverCanvas] = useState(false)
-  
-  // Connection state
-  const [connections, setConnections] = useState<any[]>([])
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [connectionStart, setConnectionStart] = useState<any>(null)
-  const [connectionPreview, setConnectionPreview] = useState<any>(null)
   
   // Voice input state
   const [isListening, setIsListening] = useState(false)
@@ -313,6 +296,30 @@ export default function PartyPlanOS() {
 
   useEffect(() => {
     const timeout = setTimeout(() => setShowPage(true), 300)
+    
+    // Auto-fetch location on page load if user has granted permission
+    const autoFetchLocation = async () => {
+      if (navigator.geolocation && !location) {
+        // Check if we have permission to access location
+        try {
+          const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+          if (permission.state === 'granted') {
+            // User has already granted permission, fetch location automatically
+            setTimeout(() => {
+              fetchBrowserLocation()
+            }, 1000) // Small delay to let the page load
+          }
+        } catch (error) {
+          // Permission API not supported, try to fetch anyway
+          setTimeout(() => {
+            fetchBrowserLocation()
+          }, 1000)
+        }
+      }
+    }
+    
+    autoFetchLocation()
+    
     return () => clearTimeout(timeout)
   }, [])
 
@@ -515,9 +522,7 @@ export default function PartyPlanOS() {
     setImagePreview(null)
     setError(null)
     setHoveredChip(null)
-    setCanvasComponents([])
     setAgentLogs([])
-    setCanvasOffset({ x: 0, y: 0 })
   }
 
   // Start orchestration
@@ -837,387 +842,19 @@ export default function PartyPlanOS() {
     }, 500)
   }
 
-  // Handle panel resizing
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsResizing(true)
-    e.preventDefault()
-  }
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing) return
-    
-    const windowWidth = window.innerWidth
-    const newWidth = (e.clientX / windowWidth) * 100
-    
-    // Constrain between 20% and 50%
-    const constrainedWidth = Math.min(Math.max(newWidth, 20), 50)
-    setLeftPanelWidth(constrainedWidth)
-  }
-
-  const handleMouseUp = () => {
-    setIsResizing(false)
-  }
-
-  // Add mouse event listeners for resizing
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-      }
-    }
-  }, [isResizing])
 
   // Infinite canvas handlers
-  const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      setIsDragging(true)
-      setDragStart({ x: e.clientX - canvasOffset.x, y: e.clientY - canvasOffset.y })
-    }
-  }
 
-  const handleCanvasMouseMove = (e: MouseEvent) => {
-    if (isDragging) {
-      setCanvasOffset({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      })
-    }
-  }
-
-  const handleCanvasMouseUp = () => {
-    setIsDragging(false)
-  }
 
   // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, item: any) => {
-    setDraggedItem(item)
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', JSON.stringify(item))
-  }
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setIsDraggingOverCanvas(true)
-  }
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDraggingOverCanvas(false)
-    }
-  }
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDraggingOverCanvas(false)
-    
-    if (draggedItem) {
-      // Check if component type already exists
-      const existingComponent = canvasComponents.find(comp => comp.type === draggedItem.type)
-      
-      if (existingComponent) {
-        // Replace existing component
-        const rect = e.currentTarget.getBoundingClientRect()
-        const x = e.clientX - rect.left - canvasOffset.x
-        const y = e.clientY - rect.top - canvasOffset.y
-        
-        setCanvasComponents(prev => 
-          prev.map(comp => 
-            comp.type === draggedItem.type 
-              ? { ...comp, x, y }
-              : comp
-          )
-        )
-      } else {
-        // Add new component
-        const rect = e.currentTarget.getBoundingClientRect()
-        const x = e.clientX - rect.left - canvasOffset.x
-        const y = e.clientY - rect.top - canvasOffset.y
-        
-        const newComponent = {
-          id: generateUniqueId(),
-          type: draggedItem.type,
-          title: draggedItem.title,
-          icon: draggedItem.icon,
-          category: draggedItem.category,
-          x: x,
-          y: y,
-          data: {}
-        }
-        
-        setCanvasComponents(prev => {
-          const updatedComponents = [...prev, newComponent]
-          
-          // Auto-connect logic - call immediately with updated components
-          createAutoConnections(newComponent, updatedComponents)
-          
-          return updatedComponents
-        })
-      }
-      
-      setDraggedItem(null)
-    }
-  }
 
-  // Auto-connection logic
-  const createAutoConnections = (newComponent: any, allComponents: any[]) => {
-    // Find the best connection target based on category and position
-    const targetComponent = findBestConnectionTarget(newComponent, allComponents)
-    
-    if (targetComponent) {
-      // Use callback to get current connections state
-      setConnections(prevConnections => {
-        const connection = createConnection(newComponent, targetComponent, prevConnections)
-        
-        if (connection) {
-          return [...prevConnections, connection]
-        }
-        
-        return prevConnections
-      })
-    }
-  }
 
-  // Find best connection target based on category and position
-  const findBestConnectionTarget = (newComponent: any, allComponents: any[]) => {
-    const otherComponents = allComponents.filter(comp => comp.id !== newComponent.id)
-    
-    if (otherComponents.length === 0) return null
-    
-    // For step components, connect to other step components (left/right)
-    if (newComponent.category === 'step') {
-      const stepComponents = otherComponents.filter(comp => comp.category === 'step')
-      if (stepComponents.length > 0) {
-        // Find closest step component horizontally
-        return stepComponents.reduce((closest, current) => {
-          const closestDistance = Math.abs(closest.x - newComponent.x)
-          const currentDistance = Math.abs(current.x - newComponent.x)
-          return currentDistance < closestDistance ? current : closest
-        })
-      }
-    }
-    
-    // For vendor components, connect to step components (top/bottom)
-    if (newComponent.category === 'vendor') {
-      const stepComponents = otherComponents.filter(comp => comp.category === 'step')
-      if (stepComponents.length > 0) {
-        // Find closest step component vertically
-        return stepComponents.reduce((closest, current) => {
-          const closestDistance = Math.abs(closest.y - newComponent.y)
-          const currentDistance = Math.abs(current.y - newComponent.y)
-          return currentDistance < closestDistance ? current : closest
-        })
-      }
-    }
-    
-    // Fallback: connect to closest component
-    return otherComponents.reduce((closest, current) => {
-      const closestDistance = Math.sqrt(
-        Math.pow(closest.x - newComponent.x, 2) + Math.pow(closest.y - newComponent.y, 2)
-      )
-      const currentDistance = Math.sqrt(
-        Math.pow(current.x - newComponent.x, 2) + Math.pow(current.y - newComponent.y, 2)
-      )
-      return currentDistance < closestDistance ? current : closest
-    })
-  }
 
-  // Create connection based on component categories
-  const createConnection = (fromComponent: any, toComponent: any, currentConnections: any[]) => {
-    let fromEdge: string
-    let toEdge: string
-    
-    // Determine connection edges based on categories
-    if (fromComponent.category === 'step' && toComponent.category === 'step') {
-      // Step to step: left/right connection
-      if (fromComponent.x < toComponent.x) {
-        fromEdge = 'right'
-        toEdge = 'left'
-      } else {
-        fromEdge = 'left'
-        toEdge = 'right'
-      }
-    } else if (fromComponent.category === 'vendor' && toComponent.category === 'step') {
-      // Vendor to step: top/bottom connection
-      if (fromComponent.y < toComponent.y) {
-        fromEdge = 'bottom'
-        toEdge = 'top'
-      } else {
-        fromEdge = 'top'
-        toEdge = 'bottom'
-      }
-    } else {
-      // Default: closest edges
-      const dx = toComponent.x - fromComponent.x
-      const dy = toComponent.y - fromComponent.y
-      
-      if (Math.abs(dx) > Math.abs(dy)) {
-        // Horizontal connection
-        if (dx > 0) {
-          fromEdge = 'right'
-          toEdge = 'left'
-        } else {
-          fromEdge = 'left'
-          toEdge = 'right'
-        }
-      } else {
-        // Vertical connection
-        if (dy > 0) {
-          fromEdge = 'bottom'
-          toEdge = 'top'
-        } else {
-          fromEdge = 'top'
-          toEdge = 'bottom'
-        }
-      }
-    }
-    
-    // Check if connection already exists
-    const exists = currentConnections.some(conn => 
-      (conn.from === fromComponent.id && conn.to === toComponent.id) ||
-      (conn.from === toComponent.id && conn.to === fromComponent.id)
-    )
-    
-    if (!exists) {
-      return {
-        id: generateUniqueId(),
-        from: fromComponent.id,
-        fromEdge: fromEdge,
-        to: toComponent.id,
-        toEdge: toEdge,
-        isAuto: true // Mark as auto-generated
-      }
-    }
-    
-    return null
-  }
 
-  // Delete component function
-  const deleteComponent = (componentId: string) => {
-    setCanvasComponents(prev => prev.filter(comp => comp.id !== componentId))
-    // Also remove any connections involving this component
-    setConnections(prev => prev.filter(conn => 
-      conn.from !== componentId && conn.to !== componentId
-    ))
-  }
 
-  // Reset canvas view to bring all components into visible area
-  const resetCanvasView = () => {
-    if (canvasComponents.length === 0) return
-    
-    // Calculate the bounding box of all components
-    const minX = Math.min(...canvasComponents.map(comp => comp.x))
-    const maxX = Math.max(...canvasComponents.map(comp => comp.x + 192)) // 192px is component width
-    const minY = Math.min(...canvasComponents.map(comp => comp.y))
-    const maxY = Math.max(...canvasComponents.map(comp => comp.y + 128)) // 128px is component height
-    
-    const totalWidth = maxX - minX
-    const totalHeight = maxY - minY
-    
-    // Calculate canvas dimensions (approximate)
-    const canvasWidth = 800 // Approximate canvas width
-    const canvasHeight = 600 // Approximate canvas height
-    
-    // Calculate offset to center the components
-    const offsetX = (canvasWidth - totalWidth) / 2 - minX
-    const offsetY = (canvasHeight - totalHeight) / 2 - minY
-    
-    // Update all component positions
-    setCanvasComponents(prev => 
-      prev.map(comp => ({
-        ...comp,
-        x: comp.x + offsetX,
-        y: comp.y + offsetY
-      }))
-    )
-    
-    // Reset canvas offset
-    setCanvasOffset({ x: 0, y: 0 })
-  }
-
-  // Connection handlers
-  const handleConnectionStart = (e: React.MouseEvent, componentId: string, edge: string) => {
-    e.stopPropagation()
-    setIsConnecting(true)
-    setConnectionStart({ componentId, edge })
-  }
-
-  const handleConnectionMove = (e: React.MouseEvent) => {
-    if (isConnecting && connectionStart) {
-      const rect = e.currentTarget.getBoundingClientRect()
-      const x = e.clientX - rect.left - canvasOffset.x
-      const y = e.clientY - rect.top - canvasOffset.y
-      setConnectionPreview({ x, y })
-    }
-  }
-
-  const handleConnectionEnd = (e: React.MouseEvent, targetComponentId: string, targetEdge: string) => {
-    if (isConnecting && connectionStart && connectionStart.componentId !== targetComponentId) {
-      const newConnection = {
-        id: generateUniqueId(),
-        from: connectionStart.componentId,
-        fromEdge: connectionStart.edge,
-        to: targetComponentId,
-        toEdge: targetEdge
-      }
-      
-      // Check if connection already exists
-      const exists = connections.some(conn => 
-        (conn.from === newConnection.from && conn.to === newConnection.to) ||
-        (conn.from === newConnection.to && conn.to === newConnection.from)
-      )
-      
-      if (!exists) {
-        setConnections(prev => [...prev, newConnection])
-      }
-    }
-    
-    setIsConnecting(false)
-    setConnectionStart(null)
-    setConnectionPreview(null)
-  }
-
-  const deleteConnection = (connectionId: string) => {
-    setConnections(prev => prev.filter(conn => conn.id !== connectionId))
-  }
-
-  // Get connection points for a component
-  const getConnectionPoints = (component: any) => {
-    const points = {
-      top: { x: component.x + 96, y: component.y },
-      right: { x: component.x + 192, y: component.y + 64 },
-      bottom: { x: component.x + 96, y: component.y + 128 },
-      left: { x: component.x, y: component.y + 64 }
-    }
-    return points
-  }
-
-  // Component templates for drag and drop
-  const componentTemplates = [
-    { type: 'theme', title: 'Party Theme', icon: '🎨', color: 'bg-purple-100 border-purple-300', category: 'step' },
-    { type: 'venue', title: 'Venue', icon: '🏢', color: 'bg-blue-100 border-blue-300', category: 'step' },
-    { type: 'cake', title: 'Cake Design', icon: '🍰', color: 'bg-pink-100 border-pink-300', category: 'step' },
-    { type: 'decorations', title: 'Decorations', icon: '🎈', color: 'bg-yellow-100 border-yellow-300', category: 'vendor' },
-    { type: 'music', title: 'Music', icon: '🎵', color: 'bg-green-100 border-green-300', category: 'vendor' },
-    { type: 'food', title: 'Food Menu', icon: '🍽️', color: 'bg-orange-100 border-orange-300', category: 'vendor' },
-    { type: 'activities', title: 'Activities', icon: '🎪', color: 'bg-red-100 border-red-300', category: 'vendor' },
-    { type: 'timeline', title: 'Timeline', icon: '⏰', color: 'bg-indigo-100 border-indigo-300', category: 'step' }
-  ]
-
-  // Add mouse event listeners for canvas dragging
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleCanvasMouseMove)
-      document.addEventListener('mouseup', handleCanvasMouseUp)
-      return () => {
-        document.removeEventListener('mousemove', handleCanvasMouseMove)
-        document.removeEventListener('mouseup', handleCanvasMouseUp)
-      }
-    }
-  }, [isDragging, dragStart])
 
   // Get log color based on type
   const getLogColor = (type: LogType) => {
@@ -1879,7 +1516,7 @@ export default function PartyPlanOS() {
                             >
                               <circle cx="12" cy="12" r="10"/>
                             </svg>
-                            Fetching your location...
+                            Auto-fetching your location...
                           </>
                         ) : (
                           <>
@@ -1935,7 +1572,7 @@ export default function PartyPlanOS() {
                       : 'bg-white/40 text-gray-800 hover:bg-white/60'
                   } backdrop-blur-xl border border-white/40`}
                 >
-                  <span className="relative z-10">{key === "url" ? "🔗 URL" : "💬 Prompt"}</span>
+                  <span className="relative z-10">{key === "url" ? "🔗 Inspiration" : "💬 Imagination"}</span>
                 </motion.button>
               ))}
             </div>
@@ -2410,51 +2047,7 @@ export default function PartyPlanOS() {
                   />
                 ))}
           </div>
-              {/* Exit Button */}
-              <motion.button
-                onClick={() => {
-                  clearSearchState()
-                  setMode('search')
-                }}
-                className="absolute top-4 right-4 z-50 p-3 bg-white/20 hover:bg-white/30 backdrop-blur-xl border border-white/40 rounded-full shadow-lg transition-all duration-300"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                whileTap={{ scale: 0.95 }}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.5 }}
-                title="Exit to Search Mode"
-              >
-                <svg 
-                  width="20" 
-                  height="20" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                  className="text-gray-700"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </motion.button>
 
-              {/* Reset Button - Small and behind exit button */}
-              {canvasComponents.length > 0 && (
-                <motion.button
-                  onClick={resetCanvasView}
-                  className="absolute top-4 right-16 z-40 p-2 bg-blue-500/80 hover:bg-blue-600/80 backdrop-blur-xl border border-blue-400/40 rounded-full shadow-lg transition-all duration-300"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.7 }}
-                  title="Reset Canvas View"
-                >
-                  <span className="text-white text-sm">🔄</span>
-                </motion.button>
-              )}
 
               {/* Festimo Logo - Bottom Right */}
               <motion.div
@@ -2470,655 +2063,70 @@ export default function PartyPlanOS() {
                 />
         </motion.div>
 
-              {/* Left Panel - Agent Orchestration (Resizable) */}
+              {/* Full Screen Canvas */}
               <motion.div
-                className={`relative backdrop-blur-2xl shadow-xl transition-all duration-300 ${
-                  hoveredPanel === 'left' ? 'shadow-2xl scale-[1.01]' : ''
-                }`}
+                className="relative backdrop-blur-2xl transition-all duration-300"
                 style={{ 
-                  width: isLeftPanelCollapsed ? '60px' : `${leftPanelWidth}%`,
+                  width: '100%',
+                  height: '100vh',
                   background: `
-                    linear-gradient(135deg, rgba(255, 182, 193, 0.2) 0%, rgba(255, 192, 203, 0.15) 50%, rgba(255, 218, 185, 0.1) 100%),
-                    radial-gradient(circle at 30% 20%, rgba(255, 182, 193, 0.3) 0%, transparent 50%)
+                    linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 50%, rgba(255, 255, 255, 0.95) 100%),
+                    radial-gradient(circle at 70% 30%, rgba(173, 216, 230, 0.15) 0%, transparent 50%),
+                    radial-gradient(circle at 20% 80%, rgba(221, 160, 221, 0.15) 0%, transparent 50%)
                   `,
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '16px',
+                  border: '1px solid rgba(255, 255, 255, 0.6)',
+                  borderRadius: '20px',
                   boxShadow: `
-                    0 8px 32px rgba(255, 182, 193, 0.4),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-                    0 0 0 1px rgba(255, 255, 255, 0.1)
+                    0 20px 40px rgba(173, 216, 230, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+                    0 0 0 1px rgba(255, 255, 255, 0.3)
                   `
                 }}
-                initial={{ x: -100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.8 }}
-                onMouseEnter={() => setHoveredPanel('left')}
-                onMouseLeave={() => setHoveredPanel(null)}
               >
-                {/* Liquid Glass Overlay */}
-                <motion.div
-                  className="absolute inset-0 rounded-2xl opacity-40 pointer-events-none"
-                  style={{
-                    background: `
-                      linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%),
-                      radial-gradient(circle at 50% 50%, rgba(255, 182, 193, 0.15) 0%, transparent 70%)
-                    `
-                  }}
-                  animate={{
-                    backgroundPosition: ['0% 0%', '100% 100%'],
-                  }}
-                  transition={{
-                    duration: 6,
-                    repeat: Infinity,
-                    ease: 'linear'
-                  }}
-                />
-                
-                {/* Glowing Edge Effect */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                {/* Collapse/Expand Button */}
-                <motion.button
-                  onClick={() => setIsLeftPanelCollapsed(!isLeftPanelCollapsed)}
-                  className="absolute top-4 right-4 z-10 p-2 bg-white/20 hover:bg-white/30 backdrop-blur-xl border border-white/40 rounded-full shadow-lg transition-all duration-300"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.6 }}
-                  title={isLeftPanelCollapsed ? "Expand Panel" : "Collapse Panel"}
-                >
-                  <svg 
-                    className="w-4 h-4 text-gray-700" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                    style={{ transform: isLeftPanelCollapsed ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </motion.button>
-                {/* Liquid Glass Effect Overlay */}
-                <motion.div
-                  className="absolute inset-0 rounded-r-2xl opacity-30 pointer-events-none"
-                  style={{
-                    background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 50%)",
-                  }}
-                  animate={{
-                    background: [
-                      "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 50%)",
-                      "radial-gradient(circle at 70% 80%, rgba(255,255,255,0.4), transparent 50%)",
-                      "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 50%)",
-                    ],
-                  }}
-                  transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                />
                 <div className="h-full flex flex-col">
-                  {!isLeftPanelCollapsed && (
-                    <>
-                      {/* Input Context */}
-                      <div className="px-4 pt-2 pb-4 border-b border-white/20">
-                    <motion.div
-                      className="space-y-3"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <h3 className="text-sm font-semibold text-gray-700">Input Context</h3>
-                      
-                      {/* URL Input */}
-                      {tab === 'url' && pinterestUrl && (
-                        <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <span className="text-blue-600 text-sm">🔗</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-blue-600 font-medium mb-1">URL Input</p>
-                              <p className="text-xs text-gray-700 break-all">{pinterestUrl}</p>
-          </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Text Prompt */}
-                      {tab === 'prompt' && chatMessage && (
-                        <div className="p-3 bg-green-50/80 border border-green-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 text-sm">💬</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-green-600 font-medium mb-1">Text Prompt</p>
-                              <p className="text-xs text-gray-700">{chatMessage}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Image Upload */}
-                      {tab === 'prompt' && selectedFile && (
-                        <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <span className="text-purple-600 text-sm">🖼️</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs text-purple-600 font-medium mb-1">Image Upload</p>
-                              <div className="flex items-center gap-2">
-                                <div className="w-12 h-12 rounded-lg border border-purple-200 overflow-hidden bg-purple-50 flex items-center justify-center">
-                                  {imagePreview ? (
-                                    <img 
-                                      src={imagePreview} 
-                                      alt="Uploaded image" 
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <span className="text-xs text-purple-600">📷</span>
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-gray-700 truncate">{selectedFile.name}</p>
-                                  <p className="text-xs text-gray-500">{(selectedFile.size / 1024 / 1024).toFixed(1)} MB</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-        </motion.div>
-                  </div>
-
-                  {/* Agent Timeline */}
-                  <div className="flex-1 overflow-y-auto p-4">
-                    <div className="space-y-1">
-                      {agentLogs.map((log, index) => (
-                        <motion.div
-                          key={log.id}
-                          className={`p-2 rounded-lg border-l-2 ${getLogColor(log.type)} backdrop-blur-sm`}
-                          initial={{ opacity: 0, x: -20, scale: 0.95 }}
-                          animate={{ opacity: 1, x: 0, scale: 1 }}
-                          transition={{ delay: index * 0.05, duration: 0.3 }}
-                        >
-                          <div className="flex items-start gap-2">
-                            <span className="text-sm">{getLogIcon(log.type)}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2">
-                                <p className={`font-medium ${
-                                  log.type === 'user_input' ? 'text-sm' : 'text-xs'
-                                }`}>
-                                  {log.message}
-                                </p>
-                                <span className="text-xs text-gray-500 flex-shrink-0">
-                                  {log.timestamp.toLocaleTimeString()}
-                                  {log.agent && ` • ${log.agent}`}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Chat Input */}
-                  <div className="p-4 border-t border-white/20">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        placeholder="Ask about your party..."
-                        className="flex-1 px-3 py-2 rounded-lg bg-white/50 border border-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 backdrop-blur-sm"
-                        onKeyPress={(e) => e.key === 'Enter' && handleBuildModeChat()}
-                      />
-                      <motion.button
-                        onClick={handleBuildModeChat}
-                        className="p-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg shadow-lg backdrop-blur-sm"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        whileTap={{ scale: 0.95 }}
-                        disabled={!chatInput.trim()}
-                      >
-                        <svg 
-                          width="16" 
-                          height="16" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round"
-                        >
-                          <line x1="22" y1="2" x2="11" y2="13"></line>
-                          <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
-                        </svg>
-                      </motion.button>
-                    </div>
-                  </div>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Resizer Divider */}
-              <motion.div
-                className={`absolute top-0 bottom-0 w-1 bg-gradient-to-b from-pink-300 via-purple-300 to-blue-300 cursor-col-resize z-10 transition-all duration-300 ${
-                  isResizing ? 'w-2 bg-gradient-to-b from-pink-400 via-purple-400 to-blue-400' : ''
-                } ${isLeftPanelCollapsed ? 'opacity-0 pointer-events-none' : ''}`}
-                style={{ left: `${leftPanelWidth}%` }}
-                onMouseDown={handleMouseDown}
-                whileHover={{ scaleX: 1.5 }}
-              >
-                <div className="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
-              </motion.div>
-
-              {/* Right Panel - Interactive Canvas (Resizable) */}
-              <motion.div
-                className={`relative backdrop-blur-2xl transition-all duration-300 ${
-                  hoveredPanel === 'right' ? 'shadow-2xl scale-[1.01]' : ''
-                }`}
-                style={{ 
-                  width: isLeftPanelCollapsed ? 'calc(100% - 60px)' : `${100 - leftPanelWidth}%`,
-                  background: `
-                    linear-gradient(135deg, rgba(173, 216, 230, 0.2) 0%, rgba(221, 160, 221, 0.15) 50%, rgba(255, 182, 193, 0.1) 100%),
-                    radial-gradient(circle at 70% 30%, rgba(173, 216, 230, 0.3) 0%, transparent 50%)
-                  `,
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '16px',
-                  boxShadow: `
-                    0 8px 32px rgba(173, 216, 230, 0.4),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-                    0 0 0 1px rgba(255, 255, 255, 0.1)
-                  `
-                }}
-                initial={{ x: 100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.8 }}
-                onMouseEnter={() => setHoveredPanel('right')}
-                onMouseLeave={() => setHoveredPanel(null)}
-              >
-                {/* Liquid Glass Overlay */}
-                <motion.div
-                  className="absolute inset-0 rounded-2xl opacity-40 pointer-events-none"
-                  style={{
-                    background: `
-                      linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%),
-                      radial-gradient(circle at 50% 50%, rgba(173, 216, 230, 0.15) 0%, transparent 70%)
-                    `
-                  }}
-                  animate={{
-                    backgroundPosition: ['0% 0%', '100% 100%'],
-                  }}
-                  transition={{
-                    duration: 8,
-                    repeat: Infinity,
-                    ease: 'linear'
-                  }}
-                />
-                
-                {/* Glowing Edge Effect */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-400/10 via-transparent to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="h-full flex flex-col">
-                  {/* Canvas Header */}
-                  <div className="p-6 border-b border-white/20">
-                    <motion.h2
-                      className="text-2xl font-bold text-gray-800 mb-2"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 }}
-                    >
-                    </motion.h2>
-                  </div>
-
-
-                        {/* Action Bar */}
-                        <div className="px-6 py-2 border-b border-white/20">
-                          <div className="flex flex-wrap gap-2">
-                            {componentTemplates.map((template) => {
-                              const isPlaced = canvasComponents.some(comp => comp.type === template.type)
-                              return (
-                                <motion.div
-                                  key={template.type}
-                                  className={`px-3 py-2 rounded-lg border-2 cursor-grab active:cursor-grabbing backdrop-blur-sm transition-all duration-200 relative overflow-hidden bg-white/20 border-white/30 shadow-lg hover:shadow-xl ${
-                                    isPlaced ? 'opacity-50 cursor-not-allowed' : ''
-                                  }`}
-                                  draggable={!isPlaced}
-                                  onDragStart={(e: any) => !isPlaced && handleDragStart(e, template)}
-                                  whileHover={!isPlaced ? { 
-                                    scale: 1.05,
-                                    boxShadow: "0 8px 24px rgba(255, 182, 193, 0.3)"
-                                  } : {}}
-                                  whileTap={!isPlaced ? { scale: 0.95 } : {}}
-                                >
-                                  {/* Glowing Edge Effect */}
-                                  <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                  
-                                  {/* Liquid Glass Overlay */}
-                                  <motion.div
-                                    className="absolute inset-0 rounded-lg opacity-20 pointer-events-none"
-                                    style={{
-                                      background: `
-                                        linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)
-                                      `
-                                    }}
-                                    animate={{
-                                      backgroundPosition: ['0% 0%', '100% 100%'],
-                                    }}
-                                    transition={{
-                                      duration: 3,
-                                      repeat: Infinity,
-                                      ease: 'linear'
-                                    }}
-                                  />
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-lg">{template.icon}</span>
-                                    <span className="text-sm font-medium text-gray-700">{template.title}</span>
-                                    {isPlaced && <span className="text-xs text-green-600">✓</span>}
-                                  </div>
-                                </motion.div>
-                              )
-                            })}
-                          </div>
-                          
-                        </div>
-
-                  {/* Canvas Area - Infinite Mode */}
+                  {/* Full Screen Canvas Area */}
                   <div className="flex-1 p-6 overflow-hidden">
                     <motion.div
                       className={`h-full rounded-2xl border-2 border-dashed backdrop-blur-sm relative overflow-hidden cursor-grab active:cursor-grabbing transition-all duration-200 ${
-                        isDraggingOverCanvas 
-                          ? 'border-green-400 bg-green-50/20' 
-                          : 'border-white/40'
+                        false 
+                          ? 'border-green-400 bg-green-50/30' 
+                          : 'border-gray-300/60 bg-gradient-to-br from-gray-50/50 to-white/50'
                       }`}
                       style={{
                         background: `
-                          linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px),
-                          linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px),
-                          linear-gradient(135deg, rgba(255,182,193,0.1), rgba(255,192,203,0.05)),
-                          radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.2) 0%, transparent 50%),
-                          radial-gradient(circle at 80% 20%, rgba(173, 216, 230, 0.2) 0%, transparent 50%)
+                          linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+                          linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                          linear-gradient(135deg, rgba(255,255,255,0.8), rgba(248,250,252,0.6)),
+                          radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                          radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.1) 0%, transparent 50%)
                         `,
                         backgroundSize: '20px 20px, 20px 20px, 100px 100px, 100px 100px, 100% 100%, 200px 200px, 200px 200px',
-                        backgroundPosition: `${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px, 0 0, ${canvasOffset.x}px ${canvasOffset.y}px, ${canvasOffset.x}px ${canvasOffset.y}px`,
+                        backgroundPosition: `0px 0px, 0px 0px, 0px 0px, 0px 0px, 0 0, 0px 0px, 0px 0px`,
                         boxShadow: `
-                          inset 0 0 0 1px rgba(255, 255, 255, 0.2),
-                          0 8px 32px rgba(255, 182, 193, 0.3)
+                          inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+                          0 8px 32px rgba(59, 130, 246, 0.1)
                         `
                       }}
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 1, duration: 0.6 }}
-                      onMouseDown={handleCanvasMouseDown}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
                     >
-                      {/* Liquid Glass Effect Overlay */}
-                      <motion.div
-                        className="absolute inset-0 rounded-2xl opacity-40 pointer-events-none"
-                        style={{
-                          background: "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.5), transparent 60%)",
-                        }}
-                        animate={{
-                          background: [
-                            "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.5), transparent 60%)",
-                            "radial-gradient(circle at 80% 70%, rgba(255,255,255,0.5), transparent 60%)",
-                            "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.5), transparent 60%)",
-                            "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.5), transparent 60%)",
-                          ],
-                        }}
-                        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                      />
-
-                      {/* Floating Glass Particles */}
-                      {[...Array(6)].map((_, i) => (
-                        <motion.div
-                          key={i}
-                          className="absolute w-2 h-2 bg-white/60 rounded-full backdrop-blur-sm"
-                          style={{
-                            left: `${20 + i * 15}%`,
-                            top: `${30 + i * 10}%`,
-                          }}
-                          animate={{
-                            y: [0, -20, 0],
-                            opacity: [0.3, 0.8, 0.3],
-                            scale: [0.8, 1.2, 0.8],
-                          }}
-                          transition={{
-                            duration: 3 + i * 0.5,
-                            repeat: Infinity,
-                            delay: i * 0.3,
-                            ease: "easeInOut"
-                          }}
-                        />
-                      ))}
-
-                      <div className="h-full flex items-center justify-center relative z-10">
-                        <motion.div
-                          className="text-center"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 1.2 }}
-                        >
-                        {/* Canvas Components */}
-                        {canvasComponents.map((component) => (
-                          <motion.div
-                            key={component.id}
-                            className={`absolute w-48 h-32 rounded-xl border-2 backdrop-blur-sm shadow-lg cursor-move group relative overflow-hidden bg-white/20 border-white/30`}
-                            style={{
-                              left: component.x,
-                              top: component.y,
-                              boxShadow: "0 8px 32px rgba(255, 182, 193, 0.3)"
-                            }}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            whileHover={{ 
-                              scale: 1.05, 
-                              boxShadow: "0 20px 40px rgba(255, 182, 193, 0.4)"
-                            }}
-                            drag
-                            dragMomentum={false}
-                          >
-                            {/* Glowing Edge Effect */}
-                            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-400/20 via-transparent to-rose-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                            
-                            {/* Liquid Glass Overlay */}
-                            <motion.div
-                              className="absolute inset-0 rounded-xl opacity-30 pointer-events-none"
-                              style={{
-                                background: `
-                                  linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%),
-                                  radial-gradient(circle at 50% 50%, rgba(255, 182, 193, 0.2) 0%, transparent 70%)
-                                `
-                              }}
-                              animate={{
-                                backgroundPosition: ['0% 0%', '100% 100%'],
-                              }}
-                              transition={{
-                                duration: 4,
-                                repeat: Infinity,
-                                ease: 'linear'
-                              }}
-                            />
-                            <div className="p-4 h-full flex flex-col relative">
-                              {/* Close Button */}
-                              <motion.button
-                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  deleteComponent(component.id)
-                                }}
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
-                              >
-                                ×
-                              </motion.button>
-                              
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-2xl">{component.icon}</span>
-                                <h4 className="font-semibold text-gray-800 text-sm">{component.title}</h4>
-                              </div>
-                              <div className="flex-1 bg-white/50 rounded-lg p-2">
-                                <p className="text-xs text-gray-600">Click to customize...</p>
-                              </div>
-                              
-                              {/* Connection Points */}
-                              <div className="absolute inset-0 pointer-events-none">
-                                {/* Top connection point */}
-                                <div 
-                                  className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg pointer-events-auto cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                  onMouseDown={(e) => {
-                                    e.stopPropagation()
-                                    setIsConnecting(true)
-                                    setConnectionStart({ componentId: component.id, edge: 'top' })
-                                  }}
-                                />
-                                {/* Right connection point */}
-                                <div 
-                                  className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg pointer-events-auto cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                  onMouseDown={(e) => {
-                                    e.stopPropagation()
-                                    setIsConnecting(true)
-                                    setConnectionStart({ componentId: component.id, edge: 'right' })
-                                  }}
-                                />
-                                {/* Bottom connection point */}
-                                <div 
-                                  className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg pointer-events-auto cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                  onMouseDown={(e) => {
-                                    e.stopPropagation()
-                                    setIsConnecting(true)
-                                    setConnectionStart({ componentId: component.id, edge: 'bottom' })
-                                  }}
-                                />
-                                {/* Left connection point */}
-                                <div 
-                                  className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg pointer-events-auto cursor-crosshair opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                  onMouseDown={(e) => {
-                                    e.stopPropagation()
-                                    setIsConnecting(true)
-                                    setConnectionStart({ componentId: component.id, edge: 'left' })
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
-
-                        {/* Connection Lines */}
-                        <svg className="absolute inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-                          
-                          {connections.map((connection) => {
-                            const fromComponent = canvasComponents.find(comp => comp.id === connection.from)
-                            const toComponent = canvasComponents.find(comp => comp.id === connection.to)
-                            
-                            if (!fromComponent || !toComponent) return null
-                            
-                            const fromPoints = getConnectionPoints(fromComponent)
-                            const toPoints = getConnectionPoints(toComponent)
-                            
-                            const startPoint = fromPoints[connection.fromEdge as keyof typeof fromPoints]
-                            const endPoint = toPoints[connection.toEdge as keyof typeof toPoints]
-                            
-                            // Different styles for auto-generated vs manual connections
-                            const isAutoConnection = connection.isAuto
-                            const strokeColor = isAutoConnection ? '#10B981' : '#3B82F6'
-                            const strokeWidth = isAutoConnection ? '2' : '3'
-                            const strokeDasharray = isAutoConnection ? 'none' : '5,5'
-                            
-                            return (
-                              <g key={connection.id}>
-                                <line
-                                  x1={startPoint.x - canvasOffset.x}
-                                  y1={startPoint.y - canvasOffset.y}
-                                  x2={endPoint.x - canvasOffset.x}
-                                  y2={endPoint.y - canvasOffset.y}
-                                  stroke={strokeColor}
-                                  strokeWidth={strokeWidth}
-                                  strokeDasharray={strokeDasharray}
-                                  className={isAutoConnection ? '' : 'animate-pulse'}
-                                />
-                                <circle
-                                  cx={startPoint.x - canvasOffset.x}
-                                  cy={startPoint.y - canvasOffset.y}
-                                  r="4"
-                                  fill={strokeColor}
-                                />
-                                <circle
-                                  cx={endPoint.x - canvasOffset.x}
-                                  cy={endPoint.y - canvasOffset.y}
-                                  r="4"
-                                  fill={strokeColor}
-                                />
-                              </g>
-                            )
-                          })}
-                          
-                          {/* Connection Preview */}
-                          {isConnecting && connectionStart && connectionPreview && (
-                            <g>
-                              <line
-                                x1={getConnectionPoints(canvasComponents.find(comp => comp.id === connectionStart.componentId) || { x: 0, y: 0 })[connectionStart.edge as keyof ReturnType<typeof getConnectionPoints>].x - canvasOffset.x}
-                                y1={getConnectionPoints(canvasComponents.find(comp => comp.id === connectionStart.componentId) || { x: 0, y: 0 })[connectionStart.edge as keyof ReturnType<typeof getConnectionPoints>].y - canvasOffset.y}
-                                x2={connectionPreview.x - canvasOffset.x}
-                                y2={connectionPreview.y - canvasOffset.y}
-                                stroke="#10B981"
-                                strokeWidth="2"
-                                strokeDasharray="3,3"
-                              />
-                            </g>
-                          )}
-                        </svg>
-
-                        {/* Drop Zone Indicator */}
-                        {isDraggingOverCanvas && (
-                          <motion.div
-                            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                          >
-                            <div className="bg-green-500/20 border-2 border-dashed border-green-400 rounded-2xl p-8 backdrop-blur-sm">
-                              <motion.div
-                                className="text-6xl mb-4"
-                                animate={{ scale: [1, 1.2, 1] }}
-                                transition={{ duration: 1, repeat: Infinity }}
-                              >
-                                🎊
-                              </motion.div>
-                              <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                                Drop Here!
-                              </h3>
-                              <p className="text-gray-500">
-                                Release to add this component to your party plan
-                              </p>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {/* Default Message */}
-                        {canvasComponents.length === 0 && !isDraggingOverCanvas && (
-                          <motion.div 
-                            className="text-6xl mb-4"
-                            animate={{ 
-                              rotate: [0, 5, -5, 0],
-                              scale: [1, 1.1, 1]
-                            }}
-                            transition={{ 
-                              duration: 4, 
-                              repeat: Infinity, 
-                              ease: "easeInOut" 
-                            }}
-                          >
-                            🎊
-                          </motion.div>
-                        )}
-                        {canvasComponents.length === 0 && !isDraggingOverCanvas && (
-                          <>
-                            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                              Drag components from above to start building!
-                            </h3>
-                            <p className="text-gray-500">
-                              Use the action bar to add party elements to your canvas
-                            </p>
-                          </>
-                        )}
-                        </motion.div>
+                      {/* Empty Canvas */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="w-20 h-20 bg-gradient-to-r from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <span className="text-3xl">🎨</span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-700 mb-2">Canvas Ready</h3>
+                          <p className="text-sm text-gray-500 max-w-xs">
+                            Your party planning canvas is ready for use
+                          </p>
+                        </div>
                       </div>
                     </motion.div>
                   </div>
