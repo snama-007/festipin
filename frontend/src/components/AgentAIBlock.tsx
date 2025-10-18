@@ -478,9 +478,9 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
             {agentName}
           </motion.div>
           
-          {/* Play Button - Bottom Left Corner */}
+          {/* Edit Agent Button - Bottom Left Corner */}
           <motion.button
-            className="absolute left-0 bottom-0 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-600 hover:text-blue-600 shadow-lg backdrop-blur-sm border border-gray-200/50 cursor-pointer z-10"
+            className="absolute left-[-4px] bottom-[-4px] w-9 h-9 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 rounded-full flex items-center justify-center text-white shadow-xl backdrop-blur-sm border border-white/60 cursor-pointer z-20 focus:outline-none focus:ring-2 focus:ring-blue-300"
             onClick={(e) => {
               e.stopPropagation()
               onPlayClick?.(agentKey)
@@ -498,8 +498,8 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
               ease: "easeInOut"
             }}
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M8 5v14l11-7z"/>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M4 20h3.6l10.9-10.9a1 1 0 0 0 0-1.4L15.4 4.6a1 1 0 0 0-1.4 0L3.1 15.5V19a1 1 0 0 0 1 1zm11.9-12.9 1.4 1.4-1.6 1.6-1.4-1.4 1.6-1.6zM5.1 18l8.2-8.2 1.4 1.4L6.5 19H5.1V18z" />
             </svg>
           </motion.button>
           
@@ -514,10 +514,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             title="Agent Options"
-            style={{ 
-              cursor: 'pointer',
-              border: '2px solid blue' // Debug border to make it visible
-            }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="2"/>

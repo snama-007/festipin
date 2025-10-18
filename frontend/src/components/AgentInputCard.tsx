@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface AgentInputCardProps {
@@ -437,6 +437,25 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
   }
 
   const connectionPath = calculateConnectionPath()
+  const connectionFadeDuration = useMemo(() => (isConnected ? 0.6 : 0.12), [isConnected])
+  const pathIdRef = useRef(`connectionPath-${agentKey}-${Math.random().toString(36).slice(2)}`)
+  const pathId = pathIdRef.current
+
+  const minX = Math.min(connectionPath.startX, connectionPath.endX)
+  const minY = Math.min(connectionPath.startY, connectionPath.endY)
+  const width = Math.abs(connectionPath.endX - connectionPath.startX) + 100
+  const height = Math.abs(connectionPath.endY - connectionPath.startY) + 100
+  const offsetStartX = connectionPath.startX - minX + 50
+  const offsetStartY = connectionPath.startY - minY + 50
+  const offsetControlX1 = connectionPath.controlX1 - minX + 50
+  const offsetControlY1 = connectionPath.controlY1 - minY + 50
+  const offsetControlX2 = connectionPath.controlX2 - minX + 50
+  const offsetControlY2 = connectionPath.controlY2 - minY + 50
+  const offsetEndX = connectionPath.endX - minX + 50
+  const offsetEndY = connectionPath.endY - minY + 50
+
+  const connectionPathD = `M ${offsetStartX} ${offsetStartY} C ${offsetControlX1} ${offsetControlY1} ${offsetControlX2} ${offsetControlY2} ${offsetEndX} ${offsetEndY}`
+  const confettiColors = ['#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#22C55E', '#06B6D4']
 
   return (
     <AnimatePresence>
@@ -446,20 +465,21 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
           <motion.div
             className="fixed pointer-events-none z-40"
             style={{
-              left: `${Math.min(connectionPath.startX, connectionPath.endX) - 50}px`,
-              top: `${Math.min(connectionPath.startY, connectionPath.endY) - 50}px`,
+              left: `${minX - 50}px`,
+              top: `${minY - 50}px`,
             }}
             initial={{ opacity: 0, scaleX: 0 }}
             animate={{ 
               opacity: isConnected ? 1 : 0,
               scaleX: isConnected ? 1 : 0
             }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            exit={{ opacity: 0, scaleX: 0, transition: { duration: 0.12, ease: "easeOut" } }}
+            transition={{ duration: connectionFadeDuration, ease: "easeOut" }}
           >
             <svg 
-              width={`${Math.abs(connectionPath.endX - connectionPath.startX) + 100}`} 
-              height={`${Math.abs(connectionPath.endY - connectionPath.startY) + 100}`} 
-              viewBox={`0 0 ${Math.abs(connectionPath.endX - connectionPath.startX) + 100} ${Math.abs(connectionPath.endY - connectionPath.startY) + 100}`} 
+              width={`${width}`} 
+              height={`${height}`} 
+              viewBox={`0 0 ${width} ${height}`} 
               className="overflow-visible"
             >
               <defs>
@@ -476,58 +496,70 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
                   </feMerge>
                 </filter>
               </defs>
-              <motion.path
-                d={`M ${connectionPath.startX - Math.min(connectionPath.startX, connectionPath.endX) + 50} ${connectionPath.startY - Math.min(connectionPath.startY, connectionPath.endY) + 50} 
-                    C ${connectionPath.controlX1 - Math.min(connectionPath.startX, connectionPath.endX) + 50} ${connectionPath.controlY1 - Math.min(connectionPath.startY, connectionPath.endY) + 50}
-                      ${connectionPath.controlX2 - Math.min(connectionPath.startX, connectionPath.endX) + 50} ${connectionPath.controlY2 - Math.min(connectionPath.startY, connectionPath.endY) + 50}
-                      ${connectionPath.endX - Math.min(connectionPath.startX, connectionPath.endX) + 50} ${connectionPath.endY - Math.min(connectionPath.startY, connectionPath.endY) + 50}`}
-                stroke="url(#connectionGradient)"
-                strokeWidth="3"
-                fill="none"
-                initial={{ pathLength: 0 }}
-                animate={{ 
-                  pathLength: isConnected ? 1 : 0,
-                  opacity: isConnected ? [0.6, 1, 0.6] : 0
-                }}
-                transition={{ 
-                  pathLength: { duration: 0.8, ease: "easeInOut" },
-                  opacity: { duration: 1.5, repeat: isConnected ? Infinity : 0, ease: "easeInOut" }
-                }}
-              />
-              {/* Animated dots along the curved path */}
-              {[...Array(8)].map((_, i) => {
-                const t = i / 7 // Parameter along the curve (0 to 1)
-                const x = (1-t) * (1-t) * (1-t) * (connectionPath.startX - Math.min(connectionPath.startX, connectionPath.endX) + 50) +
-                         3 * (1-t) * (1-t) * t * (connectionPath.controlX1 - Math.min(connectionPath.startX, connectionPath.endX) + 50) +
-                         3 * (1-t) * t * t * (connectionPath.controlX2 - Math.min(connectionPath.startX, connectionPath.endX) + 50) +
-                         t * t * t * (connectionPath.endX - Math.min(connectionPath.startX, connectionPath.endX) + 50)
-                const y = (1-t) * (1-t) * (1-t) * (connectionPath.startY - Math.min(connectionPath.startY, connectionPath.endY) + 50) +
-                         3 * (1-t) * (1-t) * t * (connectionPath.controlY1 - Math.min(connectionPath.startY, connectionPath.endY) + 50) +
-                         3 * (1-t) * t * t * (connectionPath.controlY2 - Math.min(connectionPath.startY, connectionPath.endY) + 50) +
-                         t * t * t * (connectionPath.endY - Math.min(connectionPath.startY, connectionPath.endY) + 50)
-                
-                return (
-                  <motion.circle
-                    key={i}
-                    cx={x}
-                    cy={y}
-                    r="3"
-                    fill="#3B82F6"
-                    filter="url(#glow)"
-                    initial={{ opacity: 0, scale: 0 }}
+              {isConnected && (
+                <>
+                  <motion.path
+                    id={pathId}
+                    d={connectionPathD}
+                    stroke="url(#connectionGradient)"
+                    strokeWidth="3"
+                    fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ 
-                      opacity: isConnected ? [0, 1, 0] : 0,
-                      scale: isConnected ? [0, 1.2, 0] : 0
+                      pathLength: 1,
+                      opacity: [0.6, 1, 0.6]
                     }}
                     transition={{ 
-                      duration: 2,
-                      delay: i * 0.15,
-                      repeat: isConnected ? Infinity : 0,
-                      repeatDelay: 1
+                      pathLength: { duration: 0.8, ease: "easeInOut" },
+                      opacity: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
                     }}
                   />
-                )
-              })}
+                  {(() => {
+                    const steps = 40
+                    const times = Array.from({ length: steps }, (_, idx) => idx / (steps - 1))
+                    const cxKeyframes = times.map(t => {
+                      const inv = 1 - t
+                      return inv * inv * inv * offsetStartX +
+                        3 * inv * inv * t * offsetControlX1 +
+                        3 * inv * t * t * offsetControlX2 +
+                        t * t * t * offsetEndX
+                    })
+                    const cyKeyframes = times.map(t => {
+                      const inv = 1 - t
+                      return inv * inv * inv * offsetStartY +
+                        3 * inv * inv * t * offsetControlY1 +
+                        3 * inv * t * t * offsetControlY2 +
+                        t * t * t * offsetEndY
+                    })
+                    const opacityKeyframes = times.map(t => Math.max(0, Math.sin(t * Math.PI)))
+                    const scaleKeyframes = times.map(t => 0.7 + 0.3 * Math.sin(t * Math.PI))
+
+                    return [...Array(8)].map((_, i) => (
+                      <motion.circle
+                        key={`motion-${i}`}
+                        cx={offsetStartX}
+                        cy={offsetStartY}
+                        r="3"
+                        fill={confettiColors[i % confettiColors.length]}
+                        filter="url(#glow)"
+                        animate={{
+                          cx: cxKeyframes,
+                          cy: cyKeyframes,
+                          opacity: opacityKeyframes,
+                          scale: scaleKeyframes
+                        }}
+                        transition={{
+                          duration: 2.4 + i * 0.25,
+                          ease: 'linear',
+                          times,
+                          repeat: Infinity,
+                          delay: i * 0.18
+                        }}
+                      />
+                    ))
+                  })()}
+                </>
+              )}
             </svg>
           </motion.div>
 
