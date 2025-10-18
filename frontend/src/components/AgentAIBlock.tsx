@@ -18,6 +18,7 @@ interface AgentAIBlockProps {
   borderColor?: string
   initialX?: number
   initialY?: number
+  variant?: 'floating' | 'focus' | 'secondary'
 }
 
 const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
@@ -34,14 +35,18 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   className = '',
   borderColor,
   initialX = 0,
-  initialY = 0
+  initialY = 0,
+  variant = 'floating'
 }) => {
+  const isFocus = variant === 'focus'
+  const isSecondary = variant === 'secondary'
   const [isHovered, setIsHovered] = useState(false)
   const [localData, setLocalData] = useState(data)
   const [isDragging, setIsDragging] = useState(false)
   const [position, setPosition] = useState({ x: initialX, y: initialY })
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const isFloating = variant === 'floating'
 
   // Generate random vibrant border colors
   const getRandomBorderColor = () => {
@@ -59,6 +64,19 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   }
 
   const borderGradient = borderColor || getRandomBorderColor()
+  const imageHeightClass = isFocus ? 'h-40' : isSecondary ? 'h-28' : 'h-36'
+  const emojiSizeClass = isFocus ? 'text-6xl' : isSecondary ? 'text-4xl' : 'text-5xl'
+  const cardSizeClass = isFocus
+    ? 'w-full max-w-4xl min-h-[26rem]'
+    : isSecondary
+      ? 'w-80 min-h-[20rem]'
+      : 'w-72 h-[22rem]'
+  const imageWrapperClass = isFocus ? 'px-8 pt-8' : isSecondary ? 'px-5 pt-5' : 'px-5 pt-5'
+  const dataSectionClass = isFocus
+    ? 'flex-1 px-8 pb-8 pt-6 flex flex-col justify-end gap-8'
+    : isSecondary
+      ? 'flex-1 p-5 flex flex-col justify-between'
+      : 'flex-1 p-6 flex flex-col justify-between'
 
   useEffect(() => {
     setLocalData(data)
@@ -66,6 +84,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
 
   // Drag and drop handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isFloating) return
     if (e.target instanceof HTMLElement && (e.target.closest('.agent-menu-button') || e.target.closest('.agent-dropdown-menu'))) {
       return // Don't drag if clicking on menu or dropdown
     }
@@ -94,7 +113,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   }
 
   useEffect(() => {
-    if (isDragging) {
+    if (isFloating && isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
       return () => {
@@ -102,7 +121,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         document.removeEventListener('mouseup', handleMouseUp)
       }
     }
-  }, [isDragging, dragOffset])
+  }, [isFloating, isDragging, dragOffset])
 
   // Click outside to close menu
   useEffect(() => {
@@ -141,11 +160,11 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
 
   const renderAgentImage = () => {
     return (
-      <div className="relative w-full h-32 bg-gradient-to-br from-white/90 to-gray-100/90 rounded-2xl overflow-hidden">
+      <div className={`relative w-full ${imageHeightClass} bg-gradient-to-br from-white/90 to-gray-100/90 rounded-2xl overflow-hidden`}>
 
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            className="text-5xl filter drop-shadow-lg"
+            className={`${emojiSizeClass} filter drop-shadow-lg`}
             animate={status === 'running' ? { 
               scale: [1, 1.2, 1],
               rotate: [0, 10, -10, 0],
@@ -236,6 +255,10 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
 
     // Debug logging to help identify the issue
     console.log(`AgentAIBlock ${agentKey} data:`, localData);
+    const summaryWrapper = isFocus ? 'space-y-5 text-center' : 'space-y-3'
+    const badgeClass = isFocus ? 'text-xs tracking-[0.35em] uppercase text-gray-400' : 'text-xs text-gray-500 uppercase tracking-wide'
+    const statRow = isFocus ? 'flex flex-col items-center gap-1' : 'flex items-center justify-between'
+    const labelClass = isFocus ? 'text-sm text-gray-500' : 'text-sm text-gray-600'
 
     switch (agentKey) {
       case 'budget_agent':
@@ -252,14 +275,15 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         }
         
         return (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Budget</span>
-              <span className="text-sm font-bold text-green-600">
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Budget Controls</div>
+            <div className={statRow}>
+              <span className={labelClass}>Current Budget</span>
+              <span className={isFocus ? 'text-3xl font-bold text-green-600' : 'text-sm font-bold text-green-600'}>
                 ${budgetValue}
               </span>
             </div>
-            <div className="relative">
+            <div className={isFocus ? 'relative max-w-md mx-auto w-full' : 'relative'}>
               <input
                 type="range"
                 min="500"
@@ -272,32 +296,45 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
                 }}
               />
             </div>
+            {isFocus && (
+              <div className="text-xs text-gray-400">Drag the slider to fine-tune the party budget estimates.</div>
+            )}
           </div>
         )
 
       case 'cake_agent':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎂</span>
-              <span className="text-sm font-medium text-gray-600">Cake</span>
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Sweet Selections</div>
+            <div className={statRow}>
+              <span className={labelClass}>Bakeries Suggested</span>
+              <span className={isFocus ? 'text-3xl font-semibold text-purple-500' : 'text-sm font-semibold text-purple-600'}>
+                {localData.recommended_bakeries?.length || 0}
+              </span>
             </div>
-            <div className="text-sm text-gray-500">
-              {localData.recommended_bakeries?.length || 0} options
-            </div>
+            {isFocus && (
+              <div className="text-sm text-gray-500">
+                We’ve gathered top cake artists that match your theme and budget.
+              </div>
+            )}
           </div>
         )
 
       case 'venue_agent':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📍</span>
-              <span className="text-sm font-medium text-gray-600">Venue</span>
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Venues</div>
+            <div className={statRow}>
+              <span className={labelClass}>Matching Venues</span>
+              <span className={isFocus ? 'text-3xl font-semibold text-blue-600' : 'text-sm font-semibold text-blue-600'}>
+                {localData.recommended_venues?.length || 0}
+              </span>
             </div>
-            <div className="text-sm text-gray-500">
-              {localData.recommended_venues?.length || 0} venues
-            </div>
+            {isFocus && (
+              <div className="text-sm text-gray-500">
+                Filtered to suit capacity, style, and location preferences.
+              </div>
+            )}
           </div>
         )
 
@@ -312,52 +349,72 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         }
         
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎨</span>
-              <span className="text-sm font-medium text-gray-600">Theme</span>
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Primary Theme</div>
+            <div className={statRow}>
+              <span className={isFocus ? 'text-3xl font-semibold text-indigo-600' : 'text-sm font-medium text-gray-600'}>
+                {safeRender(themeValue)}
+              </span>
             </div>
-            <div className="text-sm text-gray-500 truncate">
-              {safeRender(themeValue)}
-            </div>
+            {isFocus && (
+              <div className="flex justify-center gap-2 text-xs text-gray-400">
+                <span>Palette synced ·</span>
+                <span>Decor plan aligned</span>
+              </div>
+            )}
           </div>
         )
 
       case 'vendor_agent':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🏪</span>
-              <span className="text-sm font-medium text-gray-600">Vendors</span>
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Vendor Coverage</div>
+            <div className={statRow}>
+              <span className={labelClass}>Categories Covered</span>
+              <span className={isFocus ? 'text-3xl font-semibold text-emerald-500' : 'text-sm font-semibold text-emerald-500'}>
+                {Object.keys(localData.vendors_by_category || {}).length}
+              </span>
             </div>
-            <div className="text-sm text-gray-500">
-              {Object.keys(localData.vendors_by_category || {}).length} categories
-            </div>
+            {isFocus && (
+              <div className="text-sm text-gray-500">
+                Includes entertainment, décor, food, and specialty services ready for quotes.
+              </div>
+            )}
           </div>
         )
 
       case 'catering_agent':
         return (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🍽️</span>
-              <span className="text-sm font-medium text-gray-600">Catering</span>
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Catering Options</div>
+            <div className={statRow}>
+              <span className={labelClass}>Curated Caterers</span>
+              <span className={isFocus ? 'text-3xl font-semibold text-rose-500' : 'text-sm font-semibold text-rose-500'}>
+                {localData.recommended_caterers?.length || 0}
+              </span>
             </div>
-            <div className="text-sm text-gray-500">
-              {localData.recommended_caterers?.length || 0} options
-            </div>
+            {isFocus && (
+              <div className="text-sm text-gray-500">
+                Menu pairings balance dietary preferences, service style, and budget targets.
+              </div>
+            )}
           </div>
         )
 
       default:
         return (
-          <div className="space-y-3">
-            <div className="text-sm font-medium text-gray-600">{agentName}</div>
-            <div className="text-sm text-gray-500">
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Status</div>
+            <div className={isFocus ? 'text-2xl font-semibold text-gray-700' : 'text-sm font-medium text-gray-600'}>
               {status === 'running' ? 'Processing...' : 
                status === 'completed' ? 'Complete' :
-               status === 'error' ? 'Error' : 'Ready'}
+               status === 'error' ? 'Needs Attention' : 'Ready'}
             </div>
+            {isFocus && (
+              <div className="text-sm text-gray-500">
+                {agentName} is standing by for your inputs or regenerating fresh results.
+              </div>
+            )}
           </div>
         )
     }
@@ -365,32 +422,42 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
 
   return (
     <motion.div
-      className={`group relative w-64 h-80 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-visible ${isDragging ? 'cursor-grabbing' : 'cursor-move'} ${isActive ? 'ring-4 ring-blue-400/50' : ''} ${className}`}
+      className={`group relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-visible ${cardSizeClass} ${className} ${isFloating ? (isDragging ? 'cursor-grabbing' : 'cursor-move') : 'cursor-default'} ${isActive ? 'ring-4 ring-blue-400/50' : ''}`}
       style={{
         border: `3px solid transparent`,
         background: `linear-gradient(white, white) padding-box, linear-gradient(135deg, ${borderGradient}) border-box`,
-        transform: `translate(${position.x}px, ${position.y}px)`,
-        zIndex: isDragging ? 1000 : (isActive ? 20 : 5),
-        opacity: isActive ? 1 : 0.6
+        ...(isFloating ? { transform: `translate(${position.x}px, ${position.y}px)` } : {}),
+        zIndex: isFloating ? (isDragging ? 1000 : (isActive ? 20 : 5)) : undefined,
+        opacity: variant === 'focus' ? 1 : (isActive ? 1 : 0.75)
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onMouseDown={handleMouseDown}
-            whileHover={{ 
-              scale: isDragging ? 1 : (isActive ? 1.1 : 1.05),
-              y: isDragging ? 0 : (isActive ? -12 : -6),
-              rotateY: isDragging ? 0 : (isActive ? 8 : 3),
-              boxShadow: isActive 
-                ? `0 25px 50px ${getStatusGlow()}, 0 0 40px rgba(59, 130, 246, 0.4), 0 0 80px rgba(147, 51, 234, 0.2)`
-                : `0 25px 50px ${getStatusGlow()}, 0 0 30px rgba(59, 130, 246, 0.3), 0 0 60px rgba(147, 51, 234, 0.15)`
-            }}
-      initial={{ opacity: 0, y: 30, scale: 0.8, rotateX: -15 }}
-      animate={{ 
+      whileHover={isFloating ? { 
+        scale: isDragging ? 1 : (isActive ? 1.1 : 1.05),
+        y: isDragging ? 0 : (isActive ? -12 : -6),
+        rotateY: isDragging ? 0 : (isActive ? 8 : 3),
+        boxShadow: isActive 
+          ? `0 25px 50px ${getStatusGlow()}, 0 0 40px rgba(59, 130, 246, 0.4), 0 0 80px rgba(147, 51, 234, 0.2)`
+          : `0 25px 50px ${getStatusGlow()}, 0 0 30px rgba(59, 130, 246, 0.3), 0 0 60px rgba(147, 51, 234, 0.15)`
+      } : (
+        variant === 'focus'
+          ? { scale: isActive ? 1.01 : 1, boxShadow: isActive ? `0 25px 50px ${getStatusGlow()}` : undefined }
+          : { scale: 1.02 }
+      )}
+      initial={isFloating ? { opacity: 0, y: 30, scale: 0.8, rotateX: -15 } : { opacity: 0, y: 20, scale: 0.95 }}
+      animate={isFloating ? { 
         opacity: isActive ? 1 : 0.6, 
         y: 0, 
         scale: isDragging ? 1.05 : (isActive ? 1.05 : 1), 
         rotateX: 0,
         rotateZ: isDragging ? 2 : 0
+      } : { 
+        opacity: 1,
+        y: 0,
+        scale: isActive ? 1.01 : 1,
+        rotateX: 0,
+        rotateZ: 0
       }}
       transition={{ 
         duration: 0.8,
@@ -458,20 +525,22 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       )}
       
       {/* Agent Image Section (40%) */}
-      <div className="h-32 p-4">
+      <div className={imageWrapperClass}>
         {renderAgentImage()}
       </div>
 
       {/* Data Section (60%) */}
-      <div className="h-48 p-6 flex flex-col justify-between">
-        <div className="flex-1">
-          {renderDynamicData()}
+      <div className={dataSectionClass}>
+        <div className={isFocus ? 'flex-1 flex items-end justify-center w-full' : 'flex-1'}>
+          <div className={isFocus ? 'w-full max-w-2xl mx-auto' : ''}>
+            {renderDynamicData()}
+          </div>
         </div>
         
         {/* Agent name with menu */}
-        <div className="relative">
+        <div className={`relative ${isFocus ? 'pt-2' : ''}`}>
           <motion.div 
-            className="text-sm font-semibold text-gray-700 text-center truncate pr-8 pl-8"
+            className={`${isFocus ? 'text-lg' : 'text-sm'} font-semibold text-gray-700 text-center truncate pr-8 pl-8`}
             animate={isHovered ? { scale: 1.05 } : { scale: 1 }}
             transition={{ duration: 0.2 }}
           >
@@ -653,7 +722,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       )}
 
       {/* Drag indicator */}
-      {isDragging && (
+      {isFloating && isDragging && (
         <motion.div
           className="absolute inset-0 border-2 border-dashed border-blue-400 rounded-3xl bg-blue-50/20"
           initial={{ opacity: 0 }}

@@ -11,9 +11,11 @@ interface AgentInputCardProps {
   isOpen: boolean
   onClose: () => void
   onRegenerate: (newInputs: any) => void
-  agentPosition: { x: number; y: number }
+  agentPosition?: { x: number; y: number }
+  agentBounds?: { left: number; top: number; width: number; height: number }
   cardPosition?: { x: number; y: number }
   onCardPositionChange?: (position: { x: number; y: number }) => void
+  cardSize?: { width: number; height: number }
 }
 
 const AgentInputCard: React.FC<AgentInputCardProps> = ({
@@ -25,19 +27,47 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
   onClose,
   onRegenerate,
   agentPosition,
+  agentBounds,
   cardPosition: propCardPosition,
-  onCardPositionChange
+  onCardPositionChange,
+  cardSize
 }) => {
   const [formData, setFormData] = useState<any>({})
   const [isConnected, setIsConnected] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
-  // Use prop position or default position
-  const defaultCardPosition = {
-    x: agentPosition.x + 280, // Offset to the right of agent card
-    y: agentPosition.y - 50   // Slightly above agent card
+  const resolvedAgentBounds = useMemo(() => {
+    if (agentBounds) return agentBounds
+    if (agentPosition) {
+      return {
+        left: agentPosition.x,
+        top: agentPosition.y,
+        width: 256,
+        height: 320
+      }
+    }
+    return {
+      left: 200,
+      top: 200,
+      width: 256,
+      height: 320
+    }
+  }, [agentBounds, agentPosition])
+
+  const resolvedCardSize = {
+    width: cardSize?.width ?? 320,
+    height: cardSize?.height ?? 360
   }
+
+  // Use prop position or default position
+  const defaultCardPosition = useMemo(() => {
+    const fallback = {
+      x: resolvedAgentBounds.left + resolvedAgentBounds.width + 40,
+      y: resolvedAgentBounds.top + resolvedAgentBounds.height / 2 - resolvedCardSize.height / 2
+    }
+    return fallback
+  }, [resolvedAgentBounds, resolvedCardSize.height, resolvedCardSize.width])
   
   const cardPosition = propCardPosition || defaultCardPosition
 
@@ -366,15 +396,16 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
 
   // Calculate connection path based on positions
   const calculateConnectionPath = () => {
-    const agentCenterX = agentPosition.x + 128 // Center of agent card (256/2)
-    const agentCenterY = agentPosition.y + 160 // Center of agent card (320/2)
+    const agentCenterX = resolvedAgentBounds.left + resolvedAgentBounds.width / 2
+    const agentCenterY = resolvedAgentBounds.top + resolvedAgentBounds.height / 2
     
     const cardLeft = cardPosition.x
-    const cardTop = cardPosition.y + 40 // Top of input card
+    const cardTop = cardPosition.y
+    const cardCenterY = cardTop + resolvedCardSize.height / 2
     
     // Determine if input card is above or below the agent
-    const isCardAbove = cardTop < agentPosition.y
-    const isCardBelow = cardTop > agentPosition.y + 320
+    const isCardAbove = cardCenterY < resolvedAgentBounds.top
+    const isCardBelow = cardCenterY > resolvedAgentBounds.top + resolvedAgentBounds.height
     
     // Determine connection points based on relative position
     let startX, startY, endX, endY, controlX1, controlY1, controlX2, controlY2
@@ -382,45 +413,45 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
     if (isCardAbove) {
       // Card is above agent - connect from top of agent
       startX = agentCenterX
-      startY = agentPosition.y // Top edge of agent
-      endX = cardLeft + 160 // Center of input card (320/2)
-      endY = cardTop + 200 // Bottom of input card
+      startY = resolvedAgentBounds.top
+      endX = cardLeft + resolvedCardSize.width / 2
+      endY = cardTop + resolvedCardSize.height
       controlX1 = agentCenterX
-      controlY1 = agentPosition.y - 50 // Bend upward
-      controlX2 = cardLeft + 160
-      controlY2 = cardTop + 200 + 50 // Bend downward
+      controlY1 = resolvedAgentBounds.top - 50
+      controlX2 = cardLeft + resolvedCardSize.width / 2
+      controlY2 = endY + 50
     } else if (isCardBelow) {
       // Card is below agent - connect from bottom of agent
       startX = agentCenterX
-      startY = agentPosition.y + 320 // Bottom edge of agent
-      endX = cardLeft + 160 // Center of input card
-      endY = cardTop // Top of input card
+      startY = resolvedAgentBounds.top + resolvedAgentBounds.height
+      endX = cardLeft + resolvedCardSize.width / 2
+      endY = cardTop
       controlX1 = agentCenterX
-      controlY1 = agentPosition.y + 320 + 50 // Bend downward
-      controlX2 = cardLeft + 160
-      controlY2 = cardTop - 50 // Bend upward
+      controlY1 = startY + 50
+      controlX2 = cardLeft + resolvedCardSize.width / 2
+      controlY2 = cardTop - 50
     } else {
       // Card is at same level - use side connection
       if (cardLeft > agentCenterX) {
         // Card is to the right
-        startX = agentPosition.x + 256 // Right edge of agent
+        startX = resolvedAgentBounds.left + resolvedAgentBounds.width
         startY = agentCenterY
-        endX = cardLeft // Left edge of card
-        endY = cardTop + 100 // Center of card
-        controlX1 = agentPosition.x + 256 + 50
+        endX = cardLeft
+        endY = cardTop + resolvedCardSize.height / 2
+        controlX1 = startX + 50
         controlY1 = agentCenterY
-        controlX2 = cardLeft - 50
-        controlY2 = cardTop + 100
+        controlX2 = endX - 50
+        controlY2 = endY
       } else {
         // Card is to the left
-        startX = agentPosition.x // Left edge of agent
+        startX = resolvedAgentBounds.left
         startY = agentCenterY
-        endX = cardLeft + 320 // Right edge of card
-        endY = cardTop + 100 // Center of card
-        controlX1 = agentPosition.x - 50
+        endX = cardLeft + resolvedCardSize.width
+        endY = cardTop + resolvedCardSize.height / 2
+        controlX1 = startX - 50
         controlY1 = agentCenterY
-        controlX2 = cardLeft + 320 + 50
-        controlY2 = cardTop + 100
+        controlX2 = endX + 50
+        controlY2 = endY
       }
     }
     
