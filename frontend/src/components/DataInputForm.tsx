@@ -3,7 +3,7 @@
  * Builds forms dynamically based on missing fields from backend agent
  */
 
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ExtractedEventData } from '../services/api'
 
@@ -15,90 +15,208 @@ export interface DataInputProps {
   onSkip: () => void
 }
 
-// Field configuration for dynamic form generation
+// Simplified field configuration
 const FIELD_CONFIG = {
   eventType: {
-    label: "What type of event is this?",
+    label: "Event Type",
     type: "select",
-    options: ['Birthday', 'Wedding', 'Anniversary', 'Baby Shower', 'Graduation', 'Retirement', 'Holiday Party', 'Other'],
-    placeholder: "Select event type"
+    options: ['Birthday', 'Wedding', 'Anniversary', 'Baby Shower', 'Graduation', 'Retirement', 'Holiday Party', 'Other']
   },
   title: {
     label: "Event Title",
     type: "text",
-    placeholder: "e.g., Sarah's 5th Birthday Party"
+    placeholder: "e.g., Sarah's 5th Birthday"
   },
   honoreeName: {
-    label: "Who is this event for?",
+    label: "Who is this for?",
     type: "text",
-    placeholder: "e.g., Sarah, John, etc."
+    placeholder: "e.g., Sarah"
   },
   age: {
     label: "Age",
     type: "number",
-    placeholder: "e.g., 5, 25, etc.",
+    placeholder: "5",
     min: 0,
     max: 120
   },
-  gender: {
-    label: "Gender",
-    type: "select",
-    options: ['Male', 'Female', 'Other', 'Prefer not to say'],
-    placeholder: "Select gender"
-  },
   theme: {
-    label: "Choose a theme",
+    label: "Theme",
     type: "select",
-    options: ['Princess', 'Superhero', 'Unicorn', 'Dinosaur', 'Space', 'Pirate', 'Fairy', 'Mermaid', 'Jungle', 'Circus', 'Vintage', 'Modern', 'Tropical', 'Beach', 'Garden', 'Disney', 'Frozen', 'Cars', 'Other'],
-    placeholder: "Select theme"
+    options: ['Princess', 'Superhero', 'Unicorn', 'Dinosaur', 'Space', 'Pirate', 'Fairy', 'Mermaid', 'Jungle', 'Circus', 'Modern', 'Vintage', 'Tropical', 'Beach', 'Garden', 'Disney', 'Other']
   },
   date: {
-    label: "Event Date",
-    type: "date",
-    placeholder: "Select date"
+    label: "Date",
+    type: "date"
   },
   time: {
-    label: "Event Time",
-    type: "time-range",
-    placeholder: "Select time range"
+    label: "Time",
+    type: "time-range"
   },
   guestCount: {
-    label: "Guest Count",
-    type: "guest-count",
-    placeholder: "Number of guests"
+    label: "Guests",
+    type: "guest-count"
   },
   budget: {
-    label: "Budget Range",
-    type: "budget-range",
-    placeholder: "Budget range"
+    label: "Budget",
+    type: "budget-range"
   },
   location: {
-    label: "Event Location",
-    type: "location",
-    placeholder: "Event location details"
+    label: "Location",
+    type: "location"
   },
   foodPreference: {
-    label: "Food Preference",
+    label: "Food",
     type: "select",
-    options: ['Veg', 'Non-Veg', 'Mixed', 'No Preference'],
-    placeholder: "Select food preference"
+    options: ['Veg', 'Non-Veg', 'Mixed', 'No Preference']
   },
   activities: {
     label: "Activities",
     type: "multi-select",
-    options: ['Balloon Twisting', 'Magic Show', 'Face Painting', 'Pinata', 'Bouncy Castle', 'Photo Booth', 'Dancing', 'Karaoke', 'Treasure Hunt', 'Crafts'],
-    placeholder: "Select activities"
-  },
-  rsvpDeadline: {
-    label: "RSVP Deadline",
-    type: "date",
-    placeholder: "RSVP deadline"
-  },
-  contactInfo: {
-    label: "Contact Information",
-    type: "email",
-    placeholder: "Email address"
+    options: ['Balloon Twisting', 'Magic Show', 'Face Painting', 'Pinata', 'Bouncy Castle', 'Photo Booth', 'Dancing', 'Karaoke', 'Treasure Hunt', 'Crafts']
   }
+}
+
+const FIELD_NAME_ALIASES: Record<string, keyof typeof FIELD_CONFIG> = {
+  eventtype: 'eventType',
+  eventtitle: 'title',
+  title: 'title',
+  honoreename: 'honoreeName',
+  honoree: 'honoreeName',
+  hostname: 'honoreeName',
+  age: 'age',
+  theme: 'theme',
+  themename: 'theme',
+  date: 'date',
+  time: 'time',
+  timerange: 'time',
+  timestart: 'time',
+  timeend: 'time',
+  guestcount: 'guestCount',
+  guestcountadults: 'guestCount',
+  guestcountkids: 'guestCount',
+  guestcountchildren: 'guestCount',
+  budget: 'budget',
+  budgetrange: 'budget',
+  budgetmin: 'budget',
+  budgetmax: 'budget',
+  location: 'location',
+  locationtype: 'location',
+  locationname: 'location',
+  locationaddress: 'location',
+  locationdetails: 'location',
+  foodpreference: 'foodPreference',
+  foodpreferences: 'foodPreference',
+  activities: 'activities',
+  activitypreferences: 'activities',
+  activitieslist: 'activities',
+}
+
+const isSupportedField = (fieldName: string): fieldName is keyof typeof FIELD_CONFIG => {
+  return Object.prototype.hasOwnProperty.call(FIELD_CONFIG, fieldName)
+}
+
+const toCamelCase = (value: string) => {
+  if (!value) return value
+  if (!/[_\s.-]/.test(value)) {
+    return value.charAt(0).toLowerCase() + value.slice(1)
+  }
+  const sanitized = value.replace(/\./g, ' ')
+  const parts = sanitized.split(/[_\s-]+/).filter(Boolean)
+  return parts
+    .map((part, index) => {
+      if (index === 0) return part.toLowerCase()
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    })
+    .join('')
+}
+
+const getAliasKey = (value: string) => value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+
+const resolveAlias = (value: string): keyof typeof FIELD_CONFIG | null => {
+  const alias = FIELD_NAME_ALIASES[getAliasKey(value)]
+  return alias ?? null
+}
+
+const normalizeFieldName = (rawFieldName: string): keyof typeof FIELD_CONFIG | null => {
+  if (!rawFieldName) return null
+
+  const trimmed = rawFieldName.trim()
+  if (!trimmed) return null
+
+  const segments = trimmed.split('.')
+  const baseSegment = segments[0]
+
+  const candidates = [
+    trimmed,
+    trimmed.replace(/\./g, '_'),
+    trimmed.replace(/\./g, ' '),
+    baseSegment,
+    baseSegment.replace(/_/g, ' '),
+    toCamelCase(trimmed),
+    toCamelCase(trimmed.replace(/\./g, '_')),
+    toCamelCase(baseSegment)
+  ]
+
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    if (isSupportedField(candidate)) {
+      return candidate
+    }
+    const alias = resolveAlias(candidate)
+    if (alias) {
+      return alias
+    }
+  }
+
+  return null
+}
+
+const cloneValue = (value: any) => {
+  if (Array.isArray(value)) {
+    return [...value]
+  }
+  if (value && typeof value === 'object') {
+    return { ...value }
+  }
+  if (value === undefined || value === null) {
+    return ''
+  }
+  return value
+}
+
+const getDefaultValue = (field: keyof typeof FIELD_CONFIG) => {
+  switch (field) {
+    case 'time':
+      return { start: '', end: '' }
+    case 'guestCount':
+      return { adults: 0, kids: 0 }
+    case 'budget':
+      return { min: 0, max: 0 }
+    case 'location':
+      return { type: '', name: '', address: '' }
+    case 'activities':
+      return []
+    default:
+      return ''
+  }
+}
+
+const buildInitialFormData = (
+  baseData: ExtractedEventData,
+  fields: (keyof typeof FIELD_CONFIG)[]
+): ExtractedEventData => {
+  const initialData: ExtractedEventData = { ...baseData }
+
+  fields.forEach(field => {
+    const existingValue = baseData[field as keyof ExtractedEventData]
+    if (existingValue === undefined || existingValue === null) {
+      initialData[field as keyof ExtractedEventData] = cloneValue(getDefaultValue(field)) as any
+    } else {
+      initialData[field as keyof ExtractedEventData] = cloneValue(existingValue) as any
+    }
+  })
+
+  return initialData
 }
 
 export const DataInputForm: React.FC<DataInputProps> = ({
@@ -108,8 +226,56 @@ export const DataInputForm: React.FC<DataInputProps> = ({
   onDataComplete,
   onSkip
 }) => {
-  const [formData, setFormData] = useState<ExtractedEventData>(extractedData)
+  const normalizedMissingFields = useMemo(() => {
+    const collected: (keyof typeof FIELD_CONFIG)[] = []
+    const seen = new Set<keyof typeof FIELD_CONFIG>()
+
+    missingFields.forEach(fieldName => {
+      const normalized = normalizeFieldName(fieldName)
+      if (normalized && !seen.has(normalized)) {
+        seen.add(normalized)
+        collected.push(normalized)
+      }
+    })
+
+    return collected
+  }, [missingFields])
+
+  const [formData, setFormData] = useState<ExtractedEventData>(() =>
+    buildInitialFormData(extractedData, normalizedMissingFields)
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const previousMissingSignatureRef = useRef<string>('')
+  const previousExtractedSignatureRef = useRef<string>('')
+
+  useEffect(() => {
+    const missingSignature = normalizedMissingFields.join('|')
+    const extractedSignature = JSON.stringify(extractedData || {})
+
+    if (
+      previousMissingSignatureRef.current === missingSignature &&
+      previousExtractedSignatureRef.current === extractedSignature
+    ) {
+      return
+    }
+
+    previousMissingSignatureRef.current = missingSignature
+    previousExtractedSignatureRef.current = extractedSignature
+
+    setFormData(prevData => {
+      const mergedBase: ExtractedEventData = { ...extractedData }
+
+      normalizedMissingFields.forEach(field => {
+        if (prevData[field as keyof ExtractedEventData] !== undefined) {
+          mergedBase[field as keyof ExtractedEventData] = cloneValue(
+            prevData[field as keyof ExtractedEventData]
+          ) as any
+        }
+      })
+
+      return buildInitialFormData(mergedBase, normalizedMissingFields)
+    })
+  }, [extractedData, normalizedMissingFields])
 
   const updateFormData = (field: keyof ExtractedEventData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -117,14 +283,13 @@ export const DataInputForm: React.FC<DataInputProps> = ({
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000))
     onDataComplete(formData)
     setIsSubmitting(false)
   }
 
-  const renderDynamicField = (fieldName: string) => {
-    const config = FIELD_CONFIG[fieldName as keyof typeof FIELD_CONFIG]
+  const renderField = (fieldName: keyof typeof FIELD_CONFIG) => {
+    const config = FIELD_CONFIG[fieldName]
     if (!config) return null
 
     const currentValue = formData[fieldName as keyof ExtractedEventData]
@@ -157,14 +322,6 @@ export const DataInputForm: React.FC<DataInputProps> = ({
       case 'date':
         return (
           <DateField
-            config={config}
-            value={currentValue as string}
-            onChange={(value) => updateFormData(fieldName as keyof ExtractedEventData, value)}
-          />
-        )
-      case 'email':
-        return (
-          <EmailField
             config={config}
             value={currentValue as string}
             onChange={(value) => updateFormData(fieldName as keyof ExtractedEventData, value)}
@@ -215,563 +372,423 @@ export const DataInputForm: React.FC<DataInputProps> = ({
     }
   }
 
-  if (missingFields.length === 0) {
+  if (normalizedMissingFields.length === 0) {
     return null
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-gradient-to-br from-purple-900/20 via-pink-900/20 to-orange-900/20 backdrop-blur-md z-[100] flex items-center justify-center p-4"
     >
+      {/* Festive Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(8)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-3 h-3 rounded-full"
+            style={{
+              background: `linear-gradient(45deg, 
+                ${['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd'][i % 8]}, 
+                ${['#ff8e8e', '#6ed5d0', '#6bc5d8', '#a8d5c0', '#fed766', '#ffb3f3', '#74b0ff', '#7c3aed'][i % 8]})`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              y: [0, -30, 0],
+              x: [0, Math.random() * 20 - 10, 0],
+              opacity: [0.3, 0.8, 0.3],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: 4 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 2,
+              ease: "easeInOut"
+            }}
+          />
+        ))}
+      </div>
+
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/50"
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: -20 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className="bg-gradient-to-br from-white via-pink-50/80 to-purple-50/80 backdrop-blur-xl rounded-3xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col border border-white/30 relative"
         style={{
-          background: `
-            linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 50%, rgba(255, 255, 255, 0.95) 100%),
-            radial-gradient(circle at 20% 80%, rgba(255, 182, 193, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(255, 192, 203, 0.1) 0%, transparent 50%),
-            radial-gradient(circle at 40% 40%, rgba(255, 218, 185, 0.05) 0%, transparent 50%)
-          `,
           boxShadow: `
-            0 8px 32px rgba(255, 182, 193, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.8),
-            0 0 0 1px rgba(255, 255, 255, 0.3)
+            0 25px 50px rgba(0, 0, 0, 0.15),
+            0 0 0 1px rgba(255, 255, 255, 0.8),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9)
           `
         }}
       >
-        {/* Animated Background Particles */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(15)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full opacity-60"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -20, 0],
-                x: [0, Math.random() * 10 - 5, 0],
-                opacity: [0.6, 1, 0.6],
-                scale: [1, 1.2, 1],
-              }}
-              transition={{
-                duration: 3 + Math.random() * 2,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Liquid Glass Overlay */}
-        <motion.div
-          className="absolute inset-0 rounded-3xl opacity-40 pointer-events-none"
-          style={{
-            background: `
-              linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%),
-              radial-gradient(circle at 50% 50%, rgba(255, 182, 193, 0.15) 0%, transparent 70%)
-            `
-          }}
-          animate={{
-            backgroundPosition: ['0% 0%', '100% 100%'],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: 'linear'
-          }}
-        />
-
-        {/* Header */}
-        <div className="p-4 border-b border-white/20 flex-shrink-0 relative z-10">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-xl font-bold text-gray-800 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-              ✨ Complete Party Details
-            </h2>
-            <button
+        {/* Festive Header */}
+        <div className="p-6 border-b border-gradient-to-r from-pink-200/50 to-purple-200/50 bg-gradient-to-r from-pink-50/50 to-purple-50/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <motion.h2 
+                className="text-2xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                🎉 Complete Your Party Details
+              </motion.h2>
+              <motion.p 
+                className="text-sm text-gray-600 mt-1 font-medium"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                Let's make your celebration magical! ✨
+              </motion.p>
+            </div>
+            <motion.button
               onClick={onSkip}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-white/20"
+              className="w-10 h-10 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 hover:from-pink-100 hover:to-purple-100 flex items-center justify-center text-gray-500 hover:text-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl"
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.95 }}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </button>
+            </motion.button>
           </div>
-          
-          <p className="text-xs text-gray-600">
-            🎉 Fill in the missing details for your party
-          </p>
         </div>
 
-        {/* Content - All fields at once */}
-        <div className="p-4 overflow-y-auto flex-grow relative z-10">
-          <div className="space-y-4">
-            {missingFields.map((fieldName, index) => (
+        {/* Festive Content */}
+        <div className="p-6 overflow-y-auto flex-grow bg-gradient-to-b from-transparent via-pink-50/20 to-purple-50/20">
+          <div className="space-y-5">
+            {normalizedMissingFields.map((fieldName, index) => (
               <motion.div
                 key={fieldName}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="relative"
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ 
+                  delay: index * 0.1,
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 25
+                }}
+                className="relative group"
               >
-                    {/* Field Container with Glass Effect */}
-                    <div 
-                      className="p-4 rounded-xl backdrop-blur-sm border border-white/60 relative overflow-hidden"
-                      style={{
-                        background: `
-                          linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.7) 100%)
-                        `,
-                        boxShadow: `
-                          0 4px 16px rgba(255, 182, 193, 0.15),
-                          inset 0 1px 0 rgba(255, 255, 255, 0.8)
-                        `
-                      }}
-                    >
-                  {/* Glowing Edge Effect */}
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 hover:opacity-100 transition-opacity duration-500" />
-                  
-                  {/* Liquid Glass Overlay */}
-                  <motion.div
-                    className="absolute inset-0 rounded-xl opacity-20 pointer-events-none"
-                    style={{
-                      background: `
-                        linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)
-                      `
-                    }}
-                    animate={{
-                      backgroundPosition: ['0% 0%', '100% 100%'],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: 'linear'
-                    }}
-                  />
-                  
-                  <div className="relative z-10">
-                    {renderDynamicField(fieldName)}
+                {/* Festive Field Container */}
+                <div className="relative p-1 rounded-2xl bg-gradient-to-r from-pink-200/30 via-purple-200/30 to-indigo-200/30 backdrop-blur-sm">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-white/50 shadow-lg group-hover:shadow-xl transition-all duration-300">
+                    {renderField(fieldName)}
                   </div>
+                  
+                  {/* Festive Glow Effect */}
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-pink-400/20 via-purple-400/20 to-indigo-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-sm pointer-events-none" />
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-white/20 flex gap-2 flex-shrink-0 relative z-10">
-              <button
-                onClick={onSkip}
-                className="flex-1 px-4 py-2.5 text-gray-700 border border-white/60 rounded-lg hover:bg-white/60 transition-all duration-300 backdrop-blur-sm font-medium bg-white/40 text-sm"
-              >
-                Skip
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-lg hover:from-pink-600 hover:to-rose-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl text-sm"
-                style={{
-                  boxShadow: '0 4px 16px rgba(255, 182, 193, 0.4)'
-                }}
-              >
-            {isSubmitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <motion.span
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                >
-                  ✨
-                </motion.span>
-                Processing...
+        {/* Festive Footer */}
+        <div className="p-6 border-t border-gradient-to-r from-pink-200/50 to-purple-200/50 bg-gradient-to-r from-pink-50/50 to-purple-50/50">
+          <div className="flex gap-4">
+            <motion.button
+              onClick={onSkip}
+              className="flex-1 px-6 py-3 text-gray-600 border-2 border-gray-200 rounded-xl hover:border-pink-300 hover:bg-gradient-to-r hover:from-pink-50 hover:to-purple-50 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Skip for Now
+            </motion.button>
+            <motion.button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white rounded-xl hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-xl hover:shadow-2xl relative overflow-hidden"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {/* Animated Background */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 opacity-0"
+                animate={isSubmitting ? { opacity: 0.3 } : { opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              />
+              
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {isSubmitting ? (
+                  <>
+                    <motion.span
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="text-lg"
+                    >
+                      ✨
+                    </motion.span>
+                    Creating Magic...
+                  </>
+                ) : (
+                  <>
+                    🎉 Complete Party Details
+                  </>
+                )}
               </span>
-            ) : (
-              '🎉 Complete'
-            )}
-          </button>
+            </motion.button>
+          </div>
         </div>
       </motion.div>
     </motion.div>
   )
 }
 
-// Dynamic Field Components
+// Festive Field Components
 const SelectField: React.FC<{ config: any; value: string; onChange: (value: string) => void }> = ({ config, value, onChange }) => (
   <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+    <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
       {config.label}
     </label>
-    <div className="grid grid-cols-2 gap-2">
+    <select
+      value={value || ''}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+    >
+      <option value="">✨ Choose {config.label}</option>
       {config.options.map((option: string) => (
-        <motion.button
-          key={option}
-          onClick={() => onChange(option)}
-        className={`p-3 rounded-lg border-2 transition-all duration-300 font-medium backdrop-blur-sm relative overflow-hidden text-sm ${
-          value === option
-            ? 'border-pink-500 bg-gradient-to-r from-pink-500/40 to-rose-500/40 text-pink-800 shadow-lg'
-            : 'border-white/60 bg-white/50 hover:border-pink-300 hover:bg-white/70 text-gray-800'
-        }`}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          style={{
-            boxShadow: value === option ? '0 8px 32px rgba(255, 182, 193, 0.3)' : '0 4px 16px rgba(255, 182, 193, 0.1)'
-          }}
-        >
-          {/* Glowing Edge Effect */}
-          <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-          
-          {/* Liquid Glass Overlay */}
-          <motion.div
-            className="absolute inset-0 rounded-lg opacity-20 pointer-events-none"
-            style={{
-              background: `
-                linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)
-              `
-            }}
-            animate={{
-              backgroundPosition: ['0% 0%', '100% 100%'],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: 'linear'
-            }}
-          />
-          
-          <span className="relative z-10">{option}</span>
-        </motion.button>
+        <option key={option} value={option}>{option}</option>
       ))}
-    </div>
+    </select>
   </div>
 )
 
 const TextField: React.FC<{ config: any; value: string; onChange: (value: string) => void }> = ({ config, value, onChange }) => (
   <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+    <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
       {config.label}
     </label>
-    <div className="relative">
-      <input
-        type="text"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={config.placeholder}
-        className="w-full p-3 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-300 relative overflow-hidden text-sm"
-        style={{
-          boxShadow: '0 4px 16px rgba(255, 182, 193, 0.2)'
-        }}
-      />
-      {/* Glowing Edge Effect */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </div>
+    <input
+      type="text"
+      value={value || ''}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={config.placeholder}
+      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 placeholder-gray-400 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+    />
   </div>
 )
 
 const NumberField: React.FC<{ config: any; value: number; onChange: (value: number) => void }> = ({ config, value, onChange }) => (
   <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+    <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
       {config.label}
     </label>
-    <div className="relative">
-      <input
-        type="number"
-        value={value || ''}
-        onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-        placeholder={config.placeholder}
-        min={config.min}
-        max={config.max}
-        className="w-full p-3 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-300 relative overflow-hidden text-sm"
-        style={{
-          boxShadow: '0 4px 16px rgba(255, 182, 193, 0.2)'
-        }}
-      />
-      {/* Glowing Edge Effect */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </div>
+    <input
+      type="number"
+      value={value || ''}
+      onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+      placeholder={config.placeholder}
+      min={config.min}
+      max={config.max}
+      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 placeholder-gray-400 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+    />
   </div>
 )
 
 const DateField: React.FC<{ config: any; value: string; onChange: (value: string) => void }> = ({ config, value, onChange }) => (
   <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+    <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
       {config.label}
     </label>
-    <div className="relative">
-      <input
-        type="date"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full p-3 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 transition-all duration-300 relative overflow-hidden text-sm"
-        style={{
-          boxShadow: '0 4px 16px rgba(255, 182, 193, 0.2)'
-        }}
-      />
-      {/* Glowing Edge Effect */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </div>
+    <input
+      type="date"
+      value={value || ''}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+    />
   </div>
 )
 
-const EmailField: React.FC<{ config: any; value: string; onChange: (value: string) => void }> = ({ config, value, onChange }) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-      {config.label}
-    </label>
-    <div className="relative">
-      <input
-        type="email"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={config.placeholder}
-        className="w-full p-3 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-300 relative overflow-hidden text-sm"
-        style={{
-          boxShadow: '0 4px 16px rgba(255, 182, 193, 0.2)'
-        }}
-      />
-      {/* Glowing Edge Effect */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </div>
-  </div>
-)
-
-const TimeRangeField: React.FC<{ config: any; value: { start: string; end: string }; onChange: (value: { start: string; end: string }) => void }> = ({ config, value, onChange }) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-      {config.label}
-    </label>
-    <div className="grid grid-cols-2 gap-2">
-      <div>
-        <label className="block text-xs text-gray-600 mb-1">Start</label>
-        <input
-          type="time"
-          value={value?.start || ''}
-          onChange={(e) => onChange({ ...value, start: e.target.value })}
-          className="w-full p-2 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 transition-all duration-300 text-sm"
-        />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-600 mb-1">End</label>
-        <input
-          type="time"
-          value={value?.end || ''}
-          onChange={(e) => onChange({ ...value, end: e.target.value })}
-          className="w-full p-2 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 transition-all duration-300 text-sm"
-        />
-      </div>
-    </div>
-  </div>
-)
-
-const GuestCountField: React.FC<{ config: any; value: { adults: number; kids: number }; onChange: (value: { adults: number; kids: number }) => void }> = ({ config, value, onChange }) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-      {config.label}
-    </label>
-    <div className="grid grid-cols-2 gap-2">
-      <div>
-        <label className="block text-xs text-gray-600 mb-1">Adults</label>
-        <input
-          type="number"
-          value={value?.adults || ''}
-          onChange={(e) => onChange({ ...value, adults: parseInt(e.target.value) || 0 })}
-          className="w-full p-2 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 transition-all duration-300 text-sm"
-          min="0"
-        />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-600 mb-1">Kids</label>
-        <input
-          type="number"
-          value={value?.kids || ''}
-          onChange={(e) => onChange({ ...value, kids: parseInt(e.target.value) || 0 })}
-          className="w-full p-2 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 transition-all duration-300 text-sm"
-          min="0"
-        />
-      </div>
-    </div>
-  </div>
-)
-
-const BudgetRangeField: React.FC<{ config: any; value: { min: number; max: number }; onChange: (value: { min: number; max: number }) => void }> = ({ config, value, onChange }) => (
-  <div>
-    <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-      {config.label}
-    </label>
-    <div className="grid grid-cols-2 gap-2">
-      <div>
-        <label className="block text-xs text-gray-600 mb-1">Min ($)</label>
-        <input
-          type="number"
-          value={value?.min || ''}
-          onChange={(e) => onChange({ ...value, min: parseInt(e.target.value) || 0 })}
-          placeholder="Min"
-          className="w-full p-2 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-300 text-sm"
-          min="0"
-        />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-600 mb-1">Max ($)</label>
-        <input
-          type="number"
-          value={value?.max || ''}
-          onChange={(e) => onChange({ ...value, max: parseInt(e.target.value) || 0 })}
-          placeholder="Max"
-          className="w-full p-2 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-300 text-sm"
-          min="0"
-        />
-      </div>
-    </div>
-  </div>
-)
-
-const LocationField: React.FC<{ config: any; value: { type: string; name: string; address: string }; onChange: (value: { type: string; name: string; address: string }) => void }> = ({ config, value, onChange }) => {
-  const locationTypes = ['Home', 'Backyard', 'Park', 'Restaurant', 'Banquet Hall', 'Community Center', 'Other']
+const TimeRangeField: React.FC<{ config: any; value: { start: string; end: string }; onChange: (value: { start: string; end: string }) => void }> = ({ config, value, onChange }) => {
+  const safeValue = value || { start: '', end: '' };
   
   return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-lg font-semibold text-gray-800 mb-4 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-          Location Type
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {locationTypes.map(type => (
-            <motion.button
-              key={type}
-              onClick={() => onChange({ ...value, type })}
-              className={`p-2 rounded-lg border-2 transition-all duration-300 font-medium backdrop-blur-sm text-xs relative overflow-hidden ${
-                value?.type === type
-                  ? 'border-pink-500 bg-gradient-to-r from-pink-500/40 to-rose-500/40 text-pink-800 shadow-lg'
-                  : 'border-white/60 bg-white/50 hover:border-pink-300 hover:bg-white/70 text-gray-800'
-              }`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              style={{
-                boxShadow: value?.type === type ? '0 8px 32px rgba(255, 182, 193, 0.3)' : '0 4px 16px rgba(255, 182, 193, 0.1)'
-              }}
-            >
-              {/* Glowing Edge Effect */}
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-              
-              {/* Liquid Glass Overlay */}
-              <motion.div
-                className="absolute inset-0 rounded-xl opacity-20 pointer-events-none"
-                style={{
-                  background: `
-                    linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)
-                  `
-                }}
-                animate={{
-                  backgroundPosition: ['0% 0%', '100% 100%'],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: 'linear'
-                }}
-              />
-              
-              <span className="relative z-10">{type}</span>
-            </motion.button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <label className="block text-sm text-gray-600 mb-2">Venue Name <span className="text-gray-400 text-xs">(Optional - will fetch from database)</span></label>
-        <div className="relative">
+    <div>
+      <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+        {config.label}
+      </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">🕐 Start Time</label>
           <input
-            type="text"
-            value={value?.name || ''}
-            onChange={(e) => onChange({ ...value, name: e.target.value })}
-            placeholder="Leave empty to auto-fetch from database"
-            className="w-full p-3 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-300 relative overflow-hidden text-sm"
-            style={{
-              boxShadow: '0 4px 16px rgba(255, 182, 193, 0.1)'
-            }}
+            type="time"
+            value={safeValue.start}
+            onChange={(e) => onChange({ ...safeValue, start: e.target.value })}
+            className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
           />
-          {/* Glowing Edge Effect */}
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
-      </div>
-      <div>
-        <label className="block text-sm text-gray-600 mb-2">Address <span className="text-gray-400 text-xs">(Optional - will fetch from database)</span></label>
-        <div className="relative">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">🕕 End Time</label>
           <input
-            type="text"
-            value={value?.address || ''}
-            onChange={(e) => onChange({ ...value, address: e.target.value })}
-            placeholder="Leave empty to auto-fetch from database"
-            className="w-full p-3 border-2 border-white/60 rounded-lg focus:ring-2 focus:ring-pink-400 focus:border-pink-300 bg-white/60 backdrop-blur-sm text-gray-800 placeholder-gray-500 transition-all duration-300 relative overflow-hidden text-sm"
-            style={{
-              boxShadow: '0 4px 16px rgba(255, 182, 193, 0.1)'
-            }}
+            type="time"
+            value={safeValue.end}
+            onChange={(e) => onChange({ ...safeValue, end: e.target.value })}
+            className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
           />
-          {/* Glowing Edge Effect */}
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
       </div>
     </div>
   )
 }
 
+const GuestCountField: React.FC<{ config: any; value: { adults: number; kids: number }; onChange: (value: { adults: number; kids: number }) => void }> = ({ config, value, onChange }) => {
+  const safeValue = value || { adults: 0, kids: 0 };
+  
+  return (
+    <div>
+      <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+        {config.label}
+      </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">👥 Adults</label>
+          <input
+            type="number"
+            value={safeValue.adults || ''}
+            onChange={(e) => onChange({ ...safeValue, adults: parseInt(e.target.value) || 0 })}
+            className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+            min="0"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">🧒 Kids</label>
+          <input
+            type="number"
+            value={safeValue.kids || ''}
+            onChange={(e) => onChange({ ...safeValue, kids: parseInt(e.target.value) || 0 })}
+            className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+            min="0"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const BudgetRangeField: React.FC<{ config: any; value: { min: number; max: number }; onChange: (value: { min: number; max: number }) => void }> = ({ config, value, onChange }) => {
+  const safeValue = value || { min: 0, max: 0 };
+  
+  return (
+    <div>
+      <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+        {config.label}
+      </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">💰 Min Budget</label>
+          <input
+            type="number"
+            value={safeValue.min || ''}
+            onChange={(e) => onChange({ ...safeValue, min: parseInt(e.target.value) || 0 })}
+            className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+            min="0"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-2">💎 Max Budget</label>
+          <input
+            type="number"
+            value={safeValue.max || ''}
+            onChange={(e) => onChange({ ...safeValue, max: parseInt(e.target.value) || 0 })}
+            className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+            min="0"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const LocationField: React.FC<{ config: any; value: { type: string; name: string; address: string }; onChange: (value: { type: string; name: string; address: string }) => void }> = ({ config, value, onChange }) => {
+  const locationTypes = ['Home', 'Backyard', 'Park', 'Restaurant', 'Banquet Hall', 'Community Center', 'Other']
+  const safeValue = value || { type: '', name: '', address: '' };
+  
+  return (
+    <div className="space-y-5">
+      <div>
+        <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+          🏠 Location Type
+        </label>
+        <select
+          value={safeValue.type}
+          onChange={(e) => onChange({ ...safeValue, type: e.target.value })}
+          className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+        >
+          <option value="">🏠 Choose Location Type</option>
+          {locationTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </div>
+      
+      {safeValue.type && safeValue.type !== 'Home' && (
+        <>
+          <div>
+            <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+              🏢 Venue Name <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={safeValue.name || ''}
+              onChange={(e) => onChange({ ...safeValue, name: e.target.value })}
+              placeholder="Leave empty to auto-fetch"
+              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 placeholder-gray-400 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+              📍 Address <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={safeValue.address || ''}
+              onChange={(e) => onChange({ ...safeValue, address: e.target.value })}
+              placeholder="Leave empty to auto-fetch"
+              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-pink-200 focus:border-pink-400 bg-white text-gray-900 placeholder-gray-400 font-medium transition-all duration-300 hover:border-pink-300 shadow-lg hover:shadow-xl"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 const MultiSelectField: React.FC<{ config: any; value: string[]; onChange: (value: string[]) => void }> = ({ config, value, onChange }) => {
+  const safeValue = value || [];
+  
   const toggleOption = (option: string) => {
-    const currentValue = value || []
-    if (currentValue.includes(option)) {
-      onChange(currentValue.filter(item => item !== option))
+    if (safeValue.includes(option)) {
+      onChange(safeValue.filter(item => item !== option))
     } else {
-      onChange([...currentValue, option])
+      onChange([...safeValue, option])
     }
   }
 
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-800 mb-2 bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-        {config.label}
+      <label className="block text-sm font-bold text-gray-800 mb-3 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+        🎪 {config.label}
       </label>
-      <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+      <div className="grid grid-cols-2 gap-3 max-h-40 overflow-y-auto">
         {config.options.map((option: string) => (
-          <motion.button
+          <button
             key={option}
             onClick={() => toggleOption(option)}
-            className={`p-2 rounded-lg border-2 transition-all duration-300 font-medium backdrop-blur-sm text-xs relative overflow-hidden ${
-              value?.includes(option)
-                ? 'border-pink-500 bg-gradient-to-r from-pink-500/40 to-rose-500/40 text-pink-800 shadow-lg'
-                : 'border-white/60 bg-white/50 hover:border-pink-300 hover:bg-white/70 text-gray-800'
+            className={`p-3 rounded-xl border-2 text-sm font-medium transition-all duration-300 ${
+              safeValue.includes(option)
+                ? 'border-pink-400 bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 shadow-lg'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-pink-300 hover:bg-gradient-to-r hover:from-pink-50 hover:to-purple-50 shadow-md hover:shadow-lg'
             }`}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            style={{
-              boxShadow: value?.includes(option) ? '0 8px 32px rgba(255, 182, 193, 0.3)' : '0 4px 16px rgba(255, 182, 193, 0.1)'
-            }}
           >
-            {/* Glowing Edge Effect */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-pink-400/10 via-transparent to-rose-400/10 opacity-0 hover:opacity-100 transition-opacity duration-300" />
-            
-            {/* Liquid Glass Overlay */}
-            <motion.div
-              className="absolute inset-0 rounded-xl opacity-20 pointer-events-none"
-              style={{
-                background: `
-                  linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)
-                `
-              }}
-              animate={{
-                backgroundPosition: ['0% 0%', '100% 100%'],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: 'linear'
-              }}
-            />
-            
-            <span className="relative z-10">{option}</span>
-          </motion.button>
+            {option}
+          </button>
         ))}
       </div>
     </div>

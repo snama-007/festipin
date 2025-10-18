@@ -582,6 +582,26 @@ export default function PartyPlanOS() {
     }
   }
 
+  const resetToSearchMode = () => {
+    setShowConversationalDialog(false)
+    setShowDataInput(false)
+    setExtractionResult(null)
+    setValidationResult(null)
+    setExtractedEventData({})
+    setProgressStep('')
+    setProgressMessage('')
+    setMode('search')
+    setIsTransitioning(false)
+    setError(null)
+    setGeneratedPlan(null)
+    setAnalysisResult(null)
+    setAgentLogs([])
+    resetOrchestration()
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      router.push('/')
+    }
+  }
+
   // Clear search state when exiting build mode
   const clearSearchState = () => {
     setPinterestUrl('')
@@ -836,10 +856,7 @@ export default function PartyPlanOS() {
   }
   
   const handleExitAndDelete = () => {
-    setShowConversationalDialog(false)
-    setExtractionResult(null)
-    setExtractedEventData({})
-    // Clear any stored event data
+    resetToSearchMode()
     console.log('Event deleted and cleared')
   }
   
@@ -853,23 +870,7 @@ export default function PartyPlanOS() {
   }
   
   const handleDataSkip = () => {
-    setShowDataInput(false)
-    
-    // Check if we have minimum required data to build a party plan
-    const hasMinimumData = checkMinimumDataRequirements(extractedEventData)
-    
-    if (!hasMinimumData) {
-      setError('Inadequate details to build a party plan. Please provide at least: Event Type, Theme, and Location.')
-      return
-    }
-    
-    // Proceed to build mode with partial data
-    transitionToBuildMode()
-  }
-  
-  const checkMinimumDataRequirements = (data: ExtractedEventData): boolean => {
-    const requiredFields = ['eventType', 'theme', 'location']
-    return requiredFields.some(field => data[field as keyof ExtractedEventData] != null)
+    resetToSearchMode()
   }
 
   // Check if button should be enabled

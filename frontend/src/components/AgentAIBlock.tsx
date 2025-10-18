@@ -216,14 +216,40 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     )
   }
 
+  // Helper function to safely render values
+  const safeRender = (value: any): string => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof value === 'object') {
+      // If it's an object, try to extract a meaningful string value
+      if (value.name) return String(value.name);
+      if (value.title) return String(value.title);
+      if (value.estimated) return String(value.estimated);
+      if (value.min && value.max) return `${value.min}-${value.max}`;
+      return JSON.stringify(value);
+    }
+    return String(value);
+  };
+
   const renderDynamicData = () => {
     if (!localData) return null
 
+    // Debug logging to help identify the issue
+    console.log(`AgentAIBlock ${agentKey} data:`, localData);
+
     switch (agentKey) {
       case 'budget_agent':
-        const budgetValue = typeof localData.total_budget === 'object' 
-          ? (localData.total_budget?.estimated || localData.total_budget?.min || 1000)
-          : (localData.total_budget || 1000);
+        let budgetValue = 1000; // Default value
+        if (localData.total_budget) {
+          if (typeof localData.total_budget === 'object') {
+            // Handle object with min/max properties
+            budgetValue = localData.total_budget.estimated || localData.total_budget.min || localData.total_budget.max || 1000;
+          } else if (typeof localData.total_budget === 'number') {
+            budgetValue = localData.total_budget;
+          } else if (typeof localData.total_budget === 'string') {
+            budgetValue = parseInt(localData.total_budget) || 1000;
+          }
+        }
         
         return (
           <div className="space-y-3">
@@ -276,9 +302,14 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         )
 
       case 'theme_agent':
-        const themeValue = typeof localData.primary_theme === 'string' 
-          ? localData.primary_theme 
-          : (localData.primary_theme?.name || 'Detecting...');
+        let themeValue = 'Detecting...';
+        if (localData.primary_theme) {
+          if (typeof localData.primary_theme === 'string') {
+            themeValue = localData.primary_theme;
+          } else if (typeof localData.primary_theme === 'object') {
+            themeValue = localData.primary_theme.name || localData.primary_theme.title || 'Detecting...';
+          }
+        }
         
         return (
           <div className="space-y-3">
@@ -287,7 +318,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
               <span className="text-sm font-medium text-gray-600">Theme</span>
             </div>
             <div className="text-sm text-gray-500 truncate">
-              {themeValue}
+              {safeRender(themeValue)}
             </div>
           </div>
         )

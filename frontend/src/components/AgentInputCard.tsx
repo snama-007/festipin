@@ -114,9 +114,16 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
 
     switch (agentKey) {
       case 'budget_agent':
-        const budget = typeof currentData.total_budget === 'object' 
-          ? (currentData.total_budget?.estimated || currentData.total_budget?.min || 1000)
-          : (currentData.total_budget || 1000)
+        let budget = 1000;
+        if (currentData.total_budget) {
+          if (typeof currentData.total_budget === 'object') {
+            budget = currentData.total_budget.estimated || currentData.total_budget.min || currentData.total_budget.max || 1000;
+          } else if (typeof currentData.total_budget === 'number') {
+            budget = currentData.total_budget;
+          } else if (typeof currentData.total_budget === 'string') {
+            budget = parseInt(currentData.total_budget) || 1000;
+          }
+        }
         return (
           <div className="space-y-2">
             <div className="text-xs text-gray-500 uppercase tracking-wide">Current Settings</div>
@@ -134,9 +141,14 @@ const AgentInputCard: React.FC<AgentInputCardProps> = ({
         )
 
       case 'theme_agent':
-        const theme = typeof currentData.primary_theme === 'string' 
-          ? currentData.primary_theme 
-          : (currentData.primary_theme?.name || 'Auto-detected')
+        let theme = 'Auto-detected';
+        if (currentData.primary_theme) {
+          if (typeof currentData.primary_theme === 'string') {
+            theme = currentData.primary_theme;
+          } else if (typeof currentData.primary_theme === 'object') {
+            theme = currentData.primary_theme.name || currentData.primary_theme.title || 'Auto-detected';
+          }
+        }
         return (
           <div className="space-y-2">
             <div className="text-xs text-gray-500 uppercase tracking-wide">Current Settings</div>
