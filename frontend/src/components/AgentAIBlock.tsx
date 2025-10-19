@@ -320,6 +320,62 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
           </div>
         )
 
+      case 'decor_agent':
+        return (
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Hero Décor Plan</div>
+            <div className={statRow}>
+              <span className={labelClass}>Focal Elements</span>
+              <span className={isFocus ? 'text-3xl font-semibold text-indigo-500' : 'text-sm font-semibold text-indigo-500'}>
+                {localData.focal_elements?.length || 0}
+              </span>
+            </div>
+            {localData.focal_elements && (
+              <div className={isFocus ? 'space-y-2 text-sm text-gray-600' : 'text-sm text-gray-500'}>
+                {localData.focal_elements.slice(0, isFocus ? 3 : 2).map((item: string) => (
+                  <div key={item} className="flex items-start gap-2 justify-center">
+                    <span className="mt-1 text-indigo-400">✦</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {isFocus && localData.diy_tips && (
+              <div className="text-xs text-gray-400">
+                DIY boost: {localData.diy_tips[0]}
+              </div>
+            )}
+          </div>
+        )
+
+      case 'balloon_agent':
+        return (
+          <div className={summaryWrapper}>
+            <div className={badgeClass}>Balloon Stylists</div>
+            <div className={statRow}>
+              <span className={labelClass}>Recommended Artists</span>
+              <span className={isFocus ? 'text-3xl font-semibold text-rose-500' : 'text-sm font-semibold text-rose-500'}>
+                {localData.recommended_artists?.length || 0}
+              </span>
+            </div>
+            {localData.recommended_artists && (
+              <div className={isFocus ? 'space-y-2 text-sm text-gray-600' : 'text-sm text-gray-500'}>
+                {localData.recommended_artists.slice(0, isFocus ? 2 : 1).map((artist: any) => (
+                  <div key={artist.name} className="flex flex-col items-center">
+                    <span className="font-medium text-gray-700">{artist.name}</span>
+                    <span className="text-xs text-gray-500">{artist.specialty}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {isFocus && localData.quick_win && (
+              <div className="text-xs text-gray-400">
+                Quick win: {localData.quick_win}
+              </div>
+            )}
+          </div>
+        )
+
       case 'venue_agent':
         return (
           <div className={summaryWrapper}>
