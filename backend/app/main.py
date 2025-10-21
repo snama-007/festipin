@@ -16,7 +16,7 @@ from app.middleware.logging_middleware import (
     PerformanceLoggingMiddleware,
     ErrorLoggingMiddleware,
 )
-from app.api.routes import input, vision, plan, export, samples, orchestration, extraction, motif, websocket
+from app.api.routes import input, vision, plan, export, samples, orchestration, extraction, motif, websocket, event_driven
 
 
 @asynccontextmanager
@@ -31,6 +31,12 @@ async def lifespan(app: FastAPI):
 
     # Initialize services
     try:
+        # Start event-driven orchestrator
+        from app.services.event_driven_orchestrator import get_orchestrator
+        log_info("Starting event-driven orchestrator...")
+        await get_orchestrator()
+        log_info("Event-driven orchestrator started")
+
         # TODO: Initialize Redis connection
         # TODO: Initialize Firestore connection
         # TODO: Initialize Cloud Storage
@@ -43,6 +49,16 @@ async def lifespan(app: FastAPI):
 
     # Cleanup
     log_info("Shutting down Parx Planner Backend")
+
+    # Stop event-driven orchestrator
+    try:
+        from app.services.event_driven_orchestrator import shutdown_orchestrator
+        log_info("Stopping event-driven orchestrator...")
+        await shutdown_orchestrator()
+        log_info("Event-driven orchestrator stopped")
+    except Exception as e:
+        log_error("Error stopping orchestrator", error=str(e))
+
     # TODO: Close Redis connection
     # TODO: Close Firestore connection
 
@@ -104,6 +120,7 @@ app.include_router(orchestration.router, prefix="/api/v1", tags=["Orchestration"
 app.include_router(extraction.router, tags=["Data Extraction"])
 app.include_router(motif.router, tags=["Motif"])
 app.include_router(websocket.router, tags=["WebSocket"])  # WebSocket for real-time agent updates
+app.include_router(event_driven.router, prefix="/api/v1", tags=["Event-Driven"])  # NEW: Event-driven agent system
 
 # Mount static files for local storage (development)
 # Note: Must be mounted AFTER CORS middleware but BEFORE routes

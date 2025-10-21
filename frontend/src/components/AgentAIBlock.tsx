@@ -1,7 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Image, { StaticImageData } from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
+import { createPortal } from 'react-dom'
+import defaultThemeImage from '@/app/assets/theme_2.jpg'
+import defaultCakeImage from '@/app/assets/cake_1.jpg'
 
 interface AgentAIBlockProps {
   agentKey: string
@@ -46,6 +50,8 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   const [position, setPosition] = useState({ x: initialX, y: initialY })
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [zoomedImage, setZoomedImage] = useState<{ src: StaticImageData; alt: string } | null>(null)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const isFloating = variant === 'floating'
 
   // Generate random vibrant border colors
@@ -64,14 +70,19 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   }
 
   const borderGradient = borderColor || getRandomBorderColor()
-  const imageHeightClass = isFocus ? 'h-40' : isSecondary ? 'h-28' : 'h-36'
+  const isVisualAgent = agentKey === 'cake_agent' || agentKey === 'theme_agent'
+  const imageHeightClass = isVisualAgent
+    ? (isFocus ? 'h-64' : isSecondary ? 'h-40' : 'h-48')
+    : (isFocus ? 'h-40' : isSecondary ? 'h-28' : 'h-36')
   const emojiSizeClass = isFocus ? 'text-6xl' : isSecondary ? 'text-4xl' : 'text-5xl'
   const cardSizeClass = isFocus
     ? 'w-full max-w-4xl min-h-[26rem]'
     : isSecondary
       ? 'w-80 min-h-[20rem]'
       : 'w-72 h-[22rem]'
-  const imageWrapperClass = isFocus ? 'px-8 pt-8' : isSecondary ? 'px-5 pt-5' : 'px-5 pt-5'
+  const standardImageWrapper = isFocus ? 'px-8 pt-8' : isSecondary ? 'px-5 pt-5' : 'px-5 pt-5'
+  const visualImageWrapper = isFocus ? 'px-6 pt-6' : isSecondary ? 'px-4 pt-4' : 'px-4 pt-4'
+  const imageWrapperClass = `relative ${isVisualAgent ? visualImageWrapper : standardImageWrapper}`
   const dataSectionClass = isFocus
     ? 'flex-1 px-8 pb-8 pt-6 flex flex-col justify-end gap-8'
     : isSecondary
@@ -139,6 +150,31 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     }
   }, [isMenuOpen])
 
+  useEffect(() => {
+    if (!zoomedImage) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setZoomedImage(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = originalOverflow
+    }
+  }, [zoomedImage])
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      setPortalTarget(document.body)
+    }
+  }, [])
+
   const getStatusColor = () => {
     switch (status) {
       case 'running': return 'from-blue-500 to-cyan-500'
@@ -158,10 +194,69 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   }
 
 
+  const renderStatusIndicator = () => (
+    <motion.div 
+      className={`w-5 h-5 rounded-full bg-gradient-to-r ${getStatusColor()} shadow-lg`}
+      animate={status === 'running' ? { 
+        scale: [1, 1.3, 1],
+        opacity: [0.8, 1, 0.8]
+      } : {}}
+      transition={{ 
+        duration: 1.5,
+        repeat: status === 'running' ? Infinity : 0
+      }}
+    />
+  )
+
   const renderAgentImage = () => {
+    if (isVisualAgent) {
+      const imageSrc = agentKey === 'cake_agent' ? defaultCakeImage : defaultThemeImage
+      const altText = agentKey === 'cake_agent' ? 'Signature cake inspiration' : 'Default theme inspiration'
+      return (
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            setZoomedImage({ src: imageSrc, alt: altText })
+          }}
+          className={`group relative z-10 w-full ${imageHeightClass} rounded-3xl overflow-hidden shadow-2xl cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-blue-400/30`}
+          aria-label="Zoom preview"
+          title="Zoom preview"
+        >
+          <Image
+            src={imageSrc}
+            alt={altText}
+            fill
+            sizes={isFocus ? '(min-width: 1024px) 480px, 360px' : '(min-width: 1024px) 320px, 260px'}
+            className="object-contain transition-transform duration-700 ease-out group-hover:scale-105"
+            priority={isFocus}
+          />
+          <div className="absolute bottom-3 right-3 rounded-full bg-black/55 text-white text-xs font-medium px-3 py-1.5 flex items-center gap-1 shadow-lg backdrop-blur-sm">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="opacity-90"
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+            </svg>
+            <span>Zoom</span>
+          </div>
+        </button>
+      )
+    }
+
     return (
       <div className={`relative w-full ${imageHeightClass} bg-gradient-to-br from-white/90 to-gray-100/90 rounded-2xl overflow-hidden`}>
-
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
             className={`${emojiSizeClass} filter drop-shadow-lg`}
@@ -185,21 +280,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
           </motion.div>
         </div>
         
-        {/* Enhanced status indicator overlay */}
-        <div className="absolute top-3 right-3">
-          <motion.div 
-            className={`w-5 h-5 rounded-full bg-gradient-to-r ${getStatusColor()} shadow-lg`}
-            animate={status === 'running' ? { 
-              scale: [1, 1.3, 1],
-              opacity: [0.8, 1, 0.8]
-            } : {}}
-            transition={{ 
-              duration: 1.5,
-              repeat: status === 'running' ? Infinity : 0
-            }}
-          />
-        </div>
-
         {/* Animated pattern overlay */}
         <motion.div 
           className="absolute inset-0 opacity-20"
@@ -403,7 +483,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
             themeValue = localData.primary_theme.name || localData.primary_theme.title || 'Detecting...';
           }
         }
-        
         return (
           <div className={summaryWrapper}>
             <div className={badgeClass}>Primary Theme</div>
@@ -476,56 +555,115 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     }
   }
 
+  const zoomOverlay = portalTarget
+    ? createPortal(
+        <AnimatePresence>
+          {zoomedImage && (
+            <motion.div
+              className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setZoomedImage(null)}
+            >
+            <motion.div
+              className="relative w-full max-w-5xl"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 160, damping: 22 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative w-full max-w-5xl h-[80vh] rounded-[32px] overflow-hidden shadow-[0_40px_120px_rgba(0,0,0,0.45)] bg-gradient-to-b from-black via-black to-black">
+                <Image
+                  src={zoomedImage.src}
+                  alt={zoomedImage.alt}
+                  fill
+                  sizes="100vw"
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <button
+                type="button"
+                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 text-white hover:bg-black/80 transition flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60"
+                aria-label="Close zoomed image"
+                onClick={() => setZoomedImage(null)}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        portalTarget
+      )
+    : null
+
   return (
-    <motion.div
-      className={`group relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-visible ${cardSizeClass} ${className} ${isFloating ? (isDragging ? 'cursor-grabbing' : 'cursor-move') : 'cursor-default'} ${isActive ? 'ring-4 ring-blue-400/50' : ''}`}
-      style={{
-        border: `3px solid transparent`,
-        background: `linear-gradient(white, white) padding-box, linear-gradient(135deg, ${borderGradient}) border-box`,
-        ...(isFloating ? { transform: `translate(${position.x}px, ${position.y}px)` } : {}),
-        zIndex: isFloating ? (isDragging ? 1000 : (isActive ? 20 : 5)) : undefined,
-        opacity: variant === 'focus' ? 1 : (isActive ? 1 : 0.75)
-      }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onMouseDown={handleMouseDown}
-      whileHover={isFloating ? { 
-        scale: isDragging ? 1 : (isActive ? 1.1 : 1.05),
-        y: isDragging ? 0 : (isActive ? -12 : -6),
-        rotateY: isDragging ? 0 : (isActive ? 8 : 3),
-        boxShadow: isActive 
-          ? `0 25px 50px ${getStatusGlow()}, 0 0 40px rgba(59, 130, 246, 0.4), 0 0 80px rgba(147, 51, 234, 0.2)`
-          : `0 25px 50px ${getStatusGlow()}, 0 0 30px rgba(59, 130, 246, 0.3), 0 0 60px rgba(147, 51, 234, 0.15)`
-      } : (
-        variant === 'focus'
-          ? { scale: isActive ? 1.01 : 1, boxShadow: isActive ? `0 25px 50px ${getStatusGlow()}` : undefined }
-          : { scale: 1.02 }
-      )}
-      initial={isFloating ? { opacity: 0, y: 30, scale: 0.8, rotateX: -15 } : { opacity: 0, y: 20, scale: 0.95 }}
-      animate={isFloating ? { 
-        opacity: isActive ? 1 : 0.6, 
-        y: 0, 
-        scale: isDragging ? 1.05 : (isActive ? 1.05 : 1), 
-        rotateX: 0,
-        rotateZ: isDragging ? 2 : 0
-      } : { 
-        opacity: 1,
-        y: 0,
-        scale: isActive ? 1.01 : 1,
-        rotateX: 0,
-        rotateZ: 0
-      }}
-      transition={{ 
-        duration: 0.8,
-        ease: [0.25, 0.46, 0.45, 0.94],
-        type: "spring",
-        stiffness: 100
-      }}
-    >
+    <>
+      {zoomOverlay}
+      <motion.div
+        className={`group relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-visible ${cardSizeClass} ${className} ${isFloating ? (isDragging ? 'cursor-grabbing' : 'cursor-move') : 'cursor-default'} ${isActive ? 'ring-4 ring-blue-400/50' : ''}`}
+        style={{
+          border: `3px solid transparent`,
+          background: `linear-gradient(white, white) padding-box, linear-gradient(135deg, ${borderGradient}) border-box`,
+          ...(isFloating ? { transform: `translate(${position.x}px, ${position.y}px)` } : {}),
+          zIndex: isFloating ? (isDragging ? 1000 : (isActive ? 20 : 5)) : undefined,
+          opacity: variant === 'focus' ? 1 : (isActive ? 1 : 0.75)
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onMouseDown={handleMouseDown}
+        whileHover={isFloating ? { 
+          scale: isDragging ? 1 : (isActive ? 1.1 : 1.05),
+          y: isDragging ? 0 : (isActive ? -12 : -6),
+          rotateY: isDragging ? 0 : (isActive ? 8 : 3),
+          boxShadow: isActive 
+            ? `0 25px 50px ${getStatusGlow()}, 0 0 40px rgba(59, 130, 246, 0.4), 0 0 80px rgba(147, 51, 234, 0.2)`
+            : `0 25px 50px ${getStatusGlow()}, 0 0 30px rgba(59, 130, 246, 0.3), 0 0 60px rgba(147, 51, 234, 0.15)`
+        } : (
+          variant === 'focus'
+            ? { scale: isActive ? 1.01 : 1, boxShadow: isActive ? `0 25px 50px ${getStatusGlow()}` : undefined }
+            : { scale: 1.02 }
+        )}
+        initial={isFloating ? { opacity: 0, y: 30, scale: 0.8, rotateX: -15 } : { opacity: 0, y: 20, scale: 0.95 }}
+        animate={isFloating ? { 
+          opacity: isActive ? 1 : 0.6, 
+          y: 0, 
+          scale: isDragging ? 1.05 : (isActive ? 1.05 : 1), 
+          rotateX: 0,
+          rotateZ: isDragging ? 2 : 0
+        } : { 
+          opacity: 1,
+          y: 0,
+          scale: isActive ? 1.01 : 1,
+          rotateX: 0,
+          rotateZ: 0
+        }}
+        transition={{ 
+          duration: 0.8,
+          ease: [0.25, 0.46, 0.45, 0.94],
+          type: "spring",
+          stiffness: 100
+        }}
+      >
 
       {/* Animated background gradient */}
           <motion.div 
-            className={`absolute inset-0 bg-gradient-to-br ${borderGradient} opacity-10`}
+            className={`absolute inset-0 bg-gradient-to-br ${borderGradient} opacity-10 pointer-events-none`}
             animate={isActive ? { opacity: 0.4 } : (isHovered ? { opacity: 0.25 } : { opacity: 0.05 })}
             transition={{ duration: 0.3 }}
           />
@@ -534,7 +672,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
           <AnimatePresence>
             {isHovered && (
               <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-blue-400/30 via-purple-400/20 to-pink-400/30 rounded-3xl"
+                className="absolute inset-0 bg-gradient-to-br from-blue-400/30 via-purple-400/20 to-pink-400/30 rounded-3xl pointer-events-none"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -547,7 +685,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
           <AnimatePresence>
             {isHovered && (
               <motion.div
-                className="absolute inset-0 rounded-3xl"
+                className="absolute inset-0 rounded-3xl pointer-events-none"
                 style={{
                   background: `radial-gradient(circle at center, 
                     rgba(59, 130, 246, 0.15) 0%, 
@@ -566,7 +704,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       {/* Active Agent Blue Overlay */}
       {isActive && (
         <motion.div
-          className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-3xl"
+          className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-3xl pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ 
             opacity: [0.2, 0.4, 0.2],
@@ -583,6 +721,9 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       {/* Agent Image Section (40%) */}
       <div className={imageWrapperClass}>
         {renderAgentImage()}
+        <div className="absolute -top-2 -right-2 flex items-center justify-center pointer-events-none">
+          {renderStatusIndicator()}
+        </div>
       </div>
 
       {/* Data Section (60%) */}
@@ -787,6 +928,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         />
       )}
     </motion.div>
+    </>
   )
 }
 

@@ -10,7 +10,7 @@
 ## 📊 **Executive Summary**
 
 ### **Core Requirements**
-1. ✅ **Always-Running Agents**: InputClassifier + PlannerFinal (continuous)
+1. ✅ **Always-Running Agents**: InputClassifier + FinalPlanner (continuous)
 2. ✅ **Dynamic Agents**: Theme, Cake, Venue, Catering, Vendor (start/stop)
 3. ✅ **Dynamic Inputs**: Add/Remove inputs → agents recalculate
 4. ✅ **Budget Recalculation**: Auto-updates when any agent data changes
@@ -68,7 +68,7 @@
 │  │ • InputAnalyzer  │  │ • ThemeAgent     │  │ • AgentRegistry  │ │
 │  │   (streaming)    │  │ • CakeAgent      │  │ • StateManager   │ │
 │  │                  │  │ • VenueAgent     │  │ • DependencyDAG  │ │
-│  │ • PlannerFinal   │  │ • CateringAgent  │  │ • HealthChecker  │ │
+│  │ • FinalPlanner   │  │ • CateringAgent  │  │ • HealthChecker  │ │
 │  │   (reactive)     │  │ • VendorAgent    │  │                  │ │
 │  │                  │  │ • BudgetAgent    │  │                  │ │
 │  │ • HealthMonitor  │  │   (reactive)     │  │                  │ │
@@ -146,7 +146,7 @@
 - Auto-scaling based on Kafka consumer lag
 - Resource limits: 1 CPU, 2GB RAM per replica
 
-#### **PlannerFinal Agent (Always Reactive)**
+#### **FinalPlanner Agent (Always Reactive)**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -934,12 +934,12 @@ class InputAnalyzerAgent:
 
 ---
 
-### **2. PlannerFinal Agent (Always Reactive)**
+### **2. FinalPlanner Agent (Always Reactive)**
 
 **File:** `app/services/agents/planner_final_agent.py`
 
 ```python
-class PlannerFinalAgent:
+class FinalPlannerAgent:
     """
     Always-reactive agent that updates final plan on any change
     Deployed as: Kubernetes Deployment (replicas: 5-20)
@@ -1418,7 +1418,7 @@ Revenue target: $5-10/user/month → 25-50x margin
 - [ ] Event-driven infrastructure (Kafka setup)
 - [ ] PostgreSQL schema + migrations
 - [ ] Redis cluster configuration
-- [ ] Always-on agents (InputAnalyzer, PlannerFinal)
+- [ ] Always-on agents (InputAnalyzer, FinalPlanner)
 - [ ] Basic API endpoints
 
 ### **Phase 2: Dynamic Agents (Weeks 5-8)**
