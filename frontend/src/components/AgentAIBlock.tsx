@@ -1,11 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import Image, { StaticImageData } from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createPortal } from 'react-dom'
-import defaultThemeImage from '@/app/assets/theme_2.jpg'
-import defaultCakeImage from '@/app/assets/cake_1.jpg'
 import AgentDataItems, { AgentDataItem } from './AgentDataItems'
 
 const cityIcon = (
@@ -795,7 +791,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   onInteraction,
   onPositionChange,
   onAgentAction,
-  onPlayClick,
   isActive = false,
   className = '',
   borderColor,
@@ -811,8 +806,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   const [position, setPosition] = useState({ x: initialX, y: initialY })
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [zoomedImage, setZoomedImage] = useState<{ src: StaticImageData; alt: string } | null>(null)
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
   const isFloating = variant === 'floating'
 
   // Generate random vibrant border colors
@@ -831,25 +824,17 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   }
 
   const borderGradient = borderColor || getRandomBorderColor()
-  const isVisualAgent = agentKey === 'cake_agent' || agentKey === 'theme_agent'
-  const imageHeightClass = isVisualAgent
-    ? (isFocus ? 'h-64' : isSecondary ? 'h-40' : 'h-48')
-    : (isFocus ? 'h-40' : isSecondary ? 'h-28' : 'h-36')
-  const emojiSizeClass = isFocus ? 'text-6xl' : isSecondary ? 'text-4xl' : 'text-5xl'
   const cardSizeClass = isFocus
-    ? 'w-full max-w-4xl min-h-[28rem]'
+    ? 'w-full max-w-4xl min-h-[24rem]'
     : isSecondary
-      ? 'w-[21rem] min-h-[22rem]'
-      : 'w-[22rem] h-[24rem]'
+      ? 'w-[21rem] min-h-[20rem]'
+      : 'w-[22rem] min-h-[20rem]'
   const highlightPadding = isFocus ? 'px-8 pt-6' : isSecondary ? 'px-5 pt-4' : 'px-5 pt-4'
-  const standardImageWrapper = isFocus ? 'px-8 pt-8' : isSecondary ? 'px-5 pt-5' : 'px-5 pt-5'
-  const visualImageWrapper = isFocus ? 'px-6 pt-6' : isSecondary ? 'px-4 pt-4' : 'px-4 pt-4'
-  const imageWrapperClass = `relative ${isVisualAgent ? visualImageWrapper : standardImageWrapper}`
   const dataSectionClass = isFocus
-    ? 'flex-1 px-8 pb-8 pt-6 flex flex-col justify-end gap-8'
+    ? 'flex-1 px-8 pb-8 pt-4 flex flex-col gap-6'
     : isSecondary
-      ? 'flex-1 p-5 flex flex-col justify-between'
-      : 'flex-1 p-6 flex flex-col justify-between'
+      ? 'flex-1 p-5 flex flex-col gap-5'
+      : 'flex-1 p-6 flex flex-col gap-5'
 
   useEffect(() => {
     if (!data) {
@@ -878,6 +863,15 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     }
     return localData ? buildGenericHighlights(agentKey, localData, onInteraction) : []
   }, [agentKey, localData, onInteraction, inputClassifierDetails])
+
+  const statusText =
+    status === 'running'
+      ? 'Running'
+      : status === 'completed'
+        ? 'Completed'
+        : status === 'error'
+          ? 'Needs Attention'
+          : 'Idle'
 
   // Drag and drop handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -936,31 +930,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     }
   }, [isMenuOpen])
 
-  useEffect(() => {
-    if (!zoomedImage) return
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setZoomedImage(null)
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    const originalOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = originalOverflow
-    }
-  }, [zoomedImage])
-
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      setPortalTarget(document.body)
-    }
-  }, [])
-
   const getStatusColor = () => {
     switch (status) {
       case 'running': return 'from-blue-500 to-cyan-500'
@@ -994,113 +963,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     />
   )
 
-  const renderAgentImage = () => {
-    if (isVisualAgent) {
-      const imageSrc = agentKey === 'cake_agent' ? defaultCakeImage : defaultThemeImage
-      const altText = agentKey === 'cake_agent' ? 'Signature cake inspiration' : 'Default theme inspiration'
-      return (
-        <button
-          type="button"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            setZoomedImage({ src: imageSrc, alt: altText })
-          }}
-          className={`group relative z-10 w-full ${imageHeightClass} rounded-3xl overflow-hidden shadow-2xl cursor-zoom-in focus:outline-none focus:ring-4 focus:ring-blue-400/30`}
-          aria-label="Zoom preview"
-          title="Zoom preview"
-        >
-          <Image
-            src={imageSrc}
-            alt={altText}
-            fill
-            sizes={isFocus ? '(min-width: 1024px) 480px, 360px' : '(min-width: 1024px) 320px, 260px'}
-            className="object-contain transition-transform duration-700 ease-out group-hover:scale-105"
-            priority={isFocus}
-          />
-          <div className="absolute bottom-3 right-3 rounded-full bg-black/55 text-white text-xs font-medium px-3 py-1.5 flex items-center gap-1 shadow-lg backdrop-blur-sm">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="opacity-90"
-            >
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="14" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-            </svg>
-            <span>Zoom</span>
-          </div>
-        </button>
-      )
-    }
-
-    return (
-      <div className={`relative w-full ${imageHeightClass} bg-gradient-to-br from-white/90 to-gray-100/90 rounded-2xl overflow-hidden`}>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            className={`${emojiSizeClass} filter drop-shadow-lg`}
-            animate={status === 'running' ? { 
-              scale: [1, 1.2, 1],
-              rotate: [0, 10, -10, 0],
-              filter: ['drop-shadow(0 0 0px rgba(59, 130, 246, 0))', 'drop-shadow(0 0 20px rgba(59, 130, 246, 0.8))', 'drop-shadow(0 0 0px rgba(59, 130, 246, 0))']
-            } : {}}
-            transition={{ 
-              duration: 2.5,
-              repeat: status === 'running' ? Infinity : 0,
-              ease: "easeInOut"
-            }}
-            style={{
-              filter: status === 'completed' ? 'drop-shadow(0 0 15px rgba(34, 197, 94, 0.6))' : 
-                     status === 'error' ? 'drop-shadow(0 0 15px rgba(239, 68, 68, 0.6))' :
-                     'drop-shadow(0 0 5px rgba(0, 0, 0, 0.1))'
-            }}
-          >
-            {emoji}
-          </motion.div>
-        </div>
-        
-        {/* Animated pattern overlay */}
-        <motion.div 
-          className="absolute inset-0 opacity-20"
-          animate={{
-            background: [
-              'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%)',
-              'linear-gradient(225deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%)',
-              'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%)'
-            ]
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-
-        {/* Glow effect for running agents */}
-        {status === 'running' && (
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-2xl"
-            animate={{
-              opacity: [0.3, 0.7, 0.3]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-        )}
-      </div>
-    )
-  }
-
   // Helper function to safely render values
   const safeRender = (value: any): string => {
     if (value === null || value === undefined) return '';
@@ -1119,10 +981,10 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   const renderDynamicData = () => {
     if (!localData) return null
 
-    const summaryWrapper = isFocus ? 'space-y-5 text-center' : 'space-y-3'
-    const badgeClass = isFocus ? 'text-xs tracking-[0.35em] uppercase text-gray-400' : 'text-xs text-gray-500 uppercase tracking-wide'
-    const statRow = isFocus ? 'flex flex-col items-center gap-1' : 'flex items-center justify-between'
-    const labelClass = isFocus ? 'text-sm text-gray-500' : 'text-sm text-gray-600'
+    const summaryWrapper = isFocus ? 'space-y-5' : 'space-y-3'
+    const badgeClass = 'text-[11px] font-semibold uppercase tracking-[0.35em] text-gray-400'
+    const statRow = 'flex items-center justify-between'
+    const labelClass = isFocus ? 'text-sm text-gray-500' : 'text-xs text-gray-500'
 
     switch (agentKey) {
       case 'input_classifier': {
@@ -1146,7 +1008,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
               </div>
             ) : (
               <div className="rounded-3xl border border-dashed border-indigo-100 p-4 text-sm text-gray-500">
-                Drop a link or prompt to unlock highlighted party cues.
+                
               </div>
             )}
 
@@ -1384,66 +1246,7 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     }
   }
 
-  const zoomOverlay = portalTarget
-    ? createPortal(
-        <AnimatePresence>
-          {zoomedImage && (
-            <motion.div
-              className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setZoomedImage(null)}
-            >
-            <motion.div
-              className="relative w-full max-w-5xl"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 160, damping: 22 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative w-full max-w-5xl h-[80vh] rounded-[32px] overflow-hidden shadow-[0_40px_120px_rgba(0,0,0,0.45)] bg-gradient-to-b from-black via-black to-black">
-                <Image
-                  src={zoomedImage.src}
-                  alt={zoomedImage.alt}
-                  fill
-                  sizes="100vw"
-                  className="object-contain"
-                  priority
-                />
-              </div>
-              <button
-                type="button"
-                className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/60 text-white hover:bg-black/80 transition flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-white/60"
-                aria-label="Close zoomed image"
-                onClick={() => setZoomedImage(null)}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        portalTarget
-      )
-    : null
-
   return (
-    <>
-      {zoomOverlay}
       <motion.div
         className={`group relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-visible ${cardSizeClass} ${className} ${isFloating ? (isDragging ? 'cursor-grabbing' : 'cursor-move') : 'cursor-default'} ${isActive ? 'ring-4 ring-blue-400/50' : ''}`}
         style={{
@@ -1553,75 +1356,32 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         </div>
       )}
 
-      {/* Agent Image Section (40%) */}
-      <div className={imageWrapperClass}>
-        {renderAgentImage()}
-        <div className="absolute -top-2 -right-2 flex items-center justify-center pointer-events-none">
+      <div className={dataSectionClass}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className={isFocus ? 'text-3xl' : 'text-2xl'}>{emoji}</span>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.32em] text-gray-400">Agent Status</div>
+              <div className="text-sm font-semibold text-gray-600">{statusText}</div>
+            </div>
+          </div>
           {renderStatusIndicator()}
         </div>
-      </div>
 
-      {/* Data Section (60%) */}
-      <div className={dataSectionClass}>
-        <div className={isFocus ? 'flex-1 flex items-end justify-center w-full' : 'flex-1'}>
-          <div className={isFocus ? 'w-full max-w-2xl mx-auto' : ''}>
-            {renderDynamicData()}
-          </div>
+        <div className={`flex-1 ${isFocus ? 'w-full max-w-3xl' : 'w-full'} mt-4`}>
+          {renderDynamicData()}
         </div>
         
-        {/* Agent name with menu */}
         <div className={`relative ${isFocus ? 'pt-2' : ''}`}>
           <motion.div 
-            className={`${isFocus ? 'text-lg' : 'text-sm'} font-semibold text-gray-700 text-center truncate pr-8 pl-8`}
+            className={`${isFocus ? 'text-lg' : 'text-sm'} font-semibold text-gray-700 flex items-center justify-center gap-2 truncate pr-2 pl-2`}
             animate={isHovered ? { scale: 1.05 } : { scale: 1 }}
             transition={{ duration: 0.2 }}
           >
-            {agentName}
+            <span className={isFocus ? 'text-2xl' : 'text-xl'}>{emoji}</span>
+            <span className="truncate">{agentName}</span>
           </motion.div>
-          
-          {/* Edit Agent Button - Bottom Left Corner */}
-          <motion.button
-            className="absolute left-[-4px] bottom-[-4px] w-9 h-9 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-500 hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 rounded-full flex items-center justify-center text-white shadow-xl backdrop-blur-sm border border-white/60 cursor-pointer z-20 focus:outline-none focus:ring-2 focus:ring-blue-300"
-            onClick={(e) => {
-              e.stopPropagation()
-              onPlayClick?.(agentKey)
-            }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            title="Edit Agent"
-            animate={isActive ? { 
-              scale: [1, 1.1, 1],
-              rotate: [0, 5, -5, 0]
-            } : {}}
-            transition={{ 
-              duration: 2,
-              repeat: isActive ? Infinity : 0,
-              ease: "easeInOut"
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 20h3.6l10.9-10.9a1 1 0 0 0 0-1.4L15.4 4.6a1 1 0 0 0-1.4 0L3.1 15.5V19a1 1 0 0 0 1 1zm11.9-12.9 1.4 1.4-1.6 1.6-1.4-1.4 1.6-1.6zM5.1 18l8.2-8.2 1.4 1.4L6.5 19H5.1V18z" />
-            </svg>
-          </motion.button>
-          
-          {/* 3-Dots Menu Button - Absolute positioned */}
-          <motion.button
-            className="agent-menu-button absolute bottom-0 right-0 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 shadow-lg backdrop-blur-sm border border-gray-200/50 cursor-pointer z-10"
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsMenuOpen(!isMenuOpen)
-            }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            title="Agent Options"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="5" r="2"/>
-              <circle cx="12" cy="12" r="2"/>
-              <circle cx="12" cy="19" r="2"/>
-            </svg>
-          </motion.button>
-          
+
           {/* Dropdown Menu */}
           <AnimatePresence>
             {isMenuOpen && (
@@ -1762,7 +1522,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         />
       )}
     </motion.div>
-    </>
   )
 }
 

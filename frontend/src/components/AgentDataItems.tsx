@@ -64,43 +64,48 @@ const AgentDataItems: React.FC<AgentDataItemsProps> = ({ items, className = '', 
   if (!items.length) return null
 
   return (
-    <div className={`w-full overflow-x-auto no-scrollbar ${className}`}>
-      <div className="flex gap-3 min-w-full">
+    <div className={`w-full ${className}`}>
+      <div className="flex flex-wrap gap-3">
         {items.map((item, index) => {
           const tone = toneStyles[item.tone ?? 'indigo']
+          const basisClass = compact ? 'basis-[160px]' : 'basis-[200px]'
 
           return (
             <motion.div
               key={item.key}
-              className={`group relative flex min-w-[11rem] flex-1 items-start gap-3 rounded-2xl border border-white/60 bg-white/90 p-3 shadow-sm shadow-indigo-100/30 backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-xl ${compact ? 'min-w-[9.5rem] p-2.5' : ''}`}
+              className={`group relative ${basisClass} grow rounded-2xl border border-white/60 bg-white/90 p-4 shadow-sm shadow-indigo-100/30 backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-xl`}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05, duration: 0.25 }}
             >
               <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${tone.bg} opacity-0 transition group-hover:opacity-100`} />
-              <div className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/70 text-lg shadow-sm shadow-black/5">
-                {item.icon}
-              </div>
-              <div className="relative z-10 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.28em] text-gray-400">
-                    {item.label}
-                  </span>
+              <div className="relative z-10 flex min-h-[112px] flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {item.icon && (
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/80 text-base shadow-sm shadow-black/5">
+                        {item.icon}
+                      </div>
+                    )}
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.32em] text-gray-400">
+                      {item.label}
+                    </span>
+                  </div>
                   {item.onAction && item.actionLabel && (
                     <button
                       type="button"
                       onClick={item.onAction}
-                      className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition ${tone.badge}`}
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition ${tone.badge}`}
                     >
                       {item.actionLabel}
                     </button>
                   )}
                 </div>
-                <div className={`truncate text-sm font-semibold ${tone.text}`}>
+                <div className={`text-sm font-semibold leading-5 ${tone.text}`}>
                   {item.value || 'Add detail'}
                 </div>
                 {item.hint && (
-                  <div className="mt-1 text-xs text-gray-500 leading-snug">
+                  <div className="text-xs text-gray-500 leading-snug">
                     {item.hint}
                   </div>
                 )}
