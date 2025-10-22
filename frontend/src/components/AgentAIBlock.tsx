@@ -614,6 +614,15 @@ const buildGenericHighlights = (
           tone: 'purple'
         })
       }
+      const themeCue = pickString(data.context_theme, data.theme, data.primary_theme)
+      items.push({
+        key: 'cake-theme',
+        label: 'Theme Cue',
+        value: themeCue,
+        hint: themeCue ? undefined : 'Share a theme or flavor focus to inspire selections.',
+        icon: sparkleIcon,
+        tone: 'blue'
+      })
       break
     }
 
@@ -684,6 +693,18 @@ const buildGenericHighlights = (
           tone: 'indigo'
         })
       }
+      const preference = data.location_preference || data.user_location || data.location
+      const preferenceValue = preference
+        ? pickString(preference.name, preference.city, preference.address, preference.type)
+        : undefined
+      items.push({
+        key: 'venue-preference',
+        label: 'Preferred Area',
+        value: preferenceValue,
+        hint: preferenceValue ? undefined : 'Add venue type or neighborhood to guide scouting.',
+        icon: pinIcon,
+        tone: 'indigo'
+      })
       break
     }
 
@@ -707,6 +728,15 @@ const buildGenericHighlights = (
           tone: 'amber'
         })
       }
+      const foodPreference = pickString(data.food_preference, data.dietary_focus, data.menu_focus)
+      items.push({
+        key: 'caterer-preference',
+        label: 'Dietary Focus',
+        value: foodPreference,
+        hint: foodPreference ? undefined : 'Share dietary preferences to personalize menus.',
+        icon: chefIcon,
+        tone: 'blue'
+      })
       break
     }
 
@@ -733,6 +763,15 @@ const buildGenericHighlights = (
           tone: 'indigo'
         })
       }
+      const focusCategory = pickString(data.focus_category, data.primary_category, data.priority_category)
+      items.push({
+        key: 'vendor-focus',
+        label: 'Focus',
+        value: focusCategory,
+        hint: focusCategory ? undefined : 'Set a focus category to prioritize outreach.',
+        icon: sparkleIcon,
+        tone: 'purple'
+      })
       break
     }
 
@@ -829,7 +868,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     : isSecondary
       ? 'w-[21rem] min-h-[20rem]'
       : 'w-[22rem] min-h-[20rem]'
-  const highlightPadding = isFocus ? 'px-8 pt-6' : isSecondary ? 'px-5 pt-4' : 'px-5 pt-4'
   const dataSectionClass = isFocus
     ? 'flex-1 px-8 pb-8 pt-4 flex flex-col gap-6'
     : isSecondary
@@ -1350,12 +1388,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         />
       )}
       
-      {dataHighlights.length > 0 && (
-        <div className={`relative z-30 ${highlightPadding}`}>
-          <AgentDataItems items={dataHighlights} compact={!isFocus} />
-        </div>
-      )}
-
       <div className={dataSectionClass}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -1367,6 +1399,12 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
           </div>
           {renderStatusIndicator()}
         </div>
+
+        {dataHighlights.length > 0 && (
+          <div className="mt-4">
+            <AgentDataItems items={dataHighlights} compact={!isFocus} />
+          </div>
+        )}
 
         <div className={`flex-1 ${isFocus ? 'w-full max-w-3xl' : 'w-full'} mt-4`}>
           {renderDynamicData()}

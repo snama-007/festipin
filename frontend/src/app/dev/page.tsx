@@ -486,9 +486,55 @@ export default function PartyPlanOS() {
   }
 
   // Transition to build mode
+  const mergeExtractedFields = (
+    base: ExtractedEventData | undefined,
+    override: ExtractedEventData | undefined
+  ): ExtractedEventData => {
+    const merged: ExtractedEventData = {
+      ...(base || {}),
+      ...(override || {})
+    }
+
+    if (base?.location || override?.location) {
+      merged.location = {
+        ...(base?.location || {}),
+        ...(override?.location || {})
+      }
+    }
+
+    if (base?.guestCount || override?.guestCount) {
+      merged.guestCount = {
+        ...(base?.guestCount || {}),
+        ...(override?.guestCount || {})
+      }
+    }
+
+    if (base?.budget || override?.budget) {
+      merged.budget = {
+        ...(base?.budget || {}),
+        ...(override?.budget || {})
+      }
+    }
+
+    if (base?.time || override?.time) {
+      merged.time = {
+        ...(base?.time || {}),
+        ...(override?.time || {})
+      }
+    }
+
+    if (base?.activities || override?.activities) {
+      merged.activities = override?.activities ?? base?.activities
+    }
+
+    return merged
+  }
+
   const transitionToBuildMode = async (overrideData?: ExtractedEventData) => {
     setIsTransitioning(true)
-    
+    const finalExtractedDetails = mergeExtractedFields(extractedEventData, overrideData)
+    setExtractedEventData(finalExtractedDetails)
+
     // Clear any existing logs before transition
     setAgentLogs([])
     
@@ -510,15 +556,16 @@ export default function PartyPlanOS() {
           content: pinterestUrl || chatMessage,
           tags: [
             'party_planning',
-            (overrideData?.eventType ?? extractedEventData?.eventType ?? 'general'),
-            (overrideData?.theme ?? extractedEventData?.theme ?? 'unknown')
+            finalExtractedDetails.eventType ?? 'general',
+            finalExtractedDetails.theme ?? 'unknown'
           ],
           metadata: {
-            extracted_data: overrideData ?? extractedEventData,
+            extracted_data: finalExtractedDetails,
             validation_result: validationResult,
             extraction_result: extractionResult,
             has_image: !!selectedFile,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            party_details: finalExtractedDetails
           }
         }
       ]
@@ -527,7 +574,7 @@ export default function PartyPlanOS() {
         user_agent: navigator.userAgent,
         timestamp: new Date().toISOString(),
         source_data: {
-          extractedEventData: overrideData ?? extractedEventData,
+          extractedEventData: finalExtractedDetails,
           validationResult,
           extractionResult,
           pinterestUrl,
@@ -556,7 +603,7 @@ export default function PartyPlanOS() {
       // Store extracted data in localStorage for the build page
       const partyData = {
         partyId,
-        extractedEventData: overrideData ?? extractedEventData,
+        extractedEventData: finalExtractedDetails,
         validationResult,
         extractionResult,
         pinterestUrl,
@@ -567,6 +614,7 @@ export default function PartyPlanOS() {
           type: selectedFile.type
         } : null,
         tab,
+        partyDetails: finalExtractedDetails,
         timestamp: new Date().toISOString()
       }
       
@@ -862,7 +910,7 @@ export default function PartyPlanOS() {
   
   // Data input form handlers
   const handleDataComplete = async (completeData: ExtractedEventData) => {
-    setExtractedEventData(completeData)
+    setExtractedEventData(prev => mergeExtractedFields(prev, completeData))
     setShowDataInput(false)
     
     // Proceed to build mode with complete data
