@@ -238,6 +238,16 @@ export const DataInputForm: React.FC<DataInputProps> = ({
       }
     })
 
+    if (seen.has('date') && !seen.has('time')) {
+      seen.add('time')
+      const dateIndex = collected.indexOf('date')
+      if (dateIndex >= 0) {
+        collected.splice(dateIndex + 1, 0, 'time')
+      } else {
+        collected.push('time')
+      }
+    }
+
     return collected
   }, [missingFields])
 

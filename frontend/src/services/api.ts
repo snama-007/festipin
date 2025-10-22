@@ -111,6 +111,9 @@ export interface WorkflowStatus {
   event_id: string
   workflow_status: string
   agent_results: Record<string, AgentStatus>
+  agent_states?: Record<string, string>
+  engaged_agents?: string[]
+  primary_agent?: string
   final_plan?: any
   created_at: string
   updated_at: string
