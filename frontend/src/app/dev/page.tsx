@@ -496,31 +496,61 @@ export default function PartyPlanOS() {
     }
 
     if (base?.location || override?.location) {
-      merged.location = {
-        ...(base?.location || {}),
-        ...(override?.location || {})
+      const locationBase = { type: '', name: '', address: '' }
+      const mergedLocation = { ...locationBase }
+      if (base?.location) {
+        mergedLocation.type = base.location.type ?? mergedLocation.type
+        mergedLocation.name = base.location.name ?? mergedLocation.name
+        mergedLocation.address = base.location.address ?? mergedLocation.address
       }
+      if (override?.location) {
+        mergedLocation.type = override.location.type ?? mergedLocation.type
+        mergedLocation.name = override.location.name ?? mergedLocation.name
+        mergedLocation.address = override.location.address ?? mergedLocation.address
+      }
+      merged.location = mergedLocation
     }
 
     if (base?.guestCount || override?.guestCount) {
-      merged.guestCount = {
-        ...(base?.guestCount || {}),
-        ...(override?.guestCount || {})
+      const guestBase = { adults: 0, kids: 0 }
+      const mergedGuests = { ...guestBase }
+      if (base?.guestCount) {
+        mergedGuests.adults = base.guestCount.adults ?? mergedGuests.adults
+        mergedGuests.kids = base.guestCount.kids ?? mergedGuests.kids
       }
+      if (override?.guestCount) {
+        mergedGuests.adults = override.guestCount.adults ?? mergedGuests.adults
+        mergedGuests.kids = override.guestCount.kids ?? mergedGuests.kids
+      }
+      merged.guestCount = mergedGuests
     }
 
     if (base?.budget || override?.budget) {
-      merged.budget = {
-        ...(base?.budget || {}),
-        ...(override?.budget || {})
+      const budgetBase = { min: 0, max: 0 }
+      const mergedBudget = { ...budgetBase }
+      if (base?.budget) {
+        mergedBudget.min = base.budget.min ?? mergedBudget.min
+        mergedBudget.max = base.budget.max ?? mergedBudget.max
       }
+      if (override?.budget) {
+        mergedBudget.min = override.budget.min ?? mergedBudget.min
+        mergedBudget.max = override.budget.max ?? mergedBudget.max
+      }
+      merged.budget = mergedBudget
     }
 
     if (base?.time || override?.time) {
-      merged.time = {
-        ...(base?.time || {}),
-        ...(override?.time || {})
+      const timeBase = { start: '', end: '' }
+      const mergedTime = { ...timeBase }
+      if (base?.time) {
+        mergedTime.start = base.time.start ?? mergedTime.start
+        mergedTime.end = base.time.end ?? mergedTime.end
       }
+      if (override?.time) {
+        mergedTime.start = override.time.start ?? mergedTime.start
+        mergedTime.end = override.time.end ?? mergedTime.end
+      }
+      merged.time = mergedTime
     }
 
     if (base?.activities || override?.activities) {
