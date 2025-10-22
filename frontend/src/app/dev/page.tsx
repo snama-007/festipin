@@ -486,7 +486,7 @@ export default function PartyPlanOS() {
   }
 
   // Transition to build mode
-  const transitionToBuildMode = async () => {
+  const transitionToBuildMode = async (overrideData?: ExtractedEventData) => {
     setIsTransitioning(true)
     
     // Clear any existing logs before transition
@@ -510,11 +510,11 @@ export default function PartyPlanOS() {
           content: pinterestUrl || chatMessage,
           tags: [
             'party_planning',
-            extractedEventData?.eventType || 'general',
-            extractedEventData?.theme || 'unknown'
+            (overrideData?.eventType ?? extractedEventData?.eventType ?? 'general'),
+            (overrideData?.theme ?? extractedEventData?.theme ?? 'unknown')
           ],
           metadata: {
-            extracted_data: extractedEventData,
+            extracted_data: overrideData ?? extractedEventData,
             validation_result: validationResult,
             extraction_result: extractionResult,
             has_image: !!selectedFile,
@@ -527,7 +527,7 @@ export default function PartyPlanOS() {
         user_agent: navigator.userAgent,
         timestamp: new Date().toISOString(),
         source_data: {
-          extractedEventData,
+          extractedEventData: overrideData ?? extractedEventData,
           validationResult,
           extractionResult,
           pinterestUrl,
@@ -556,7 +556,7 @@ export default function PartyPlanOS() {
       // Store extracted data in localStorage for the build page
       const partyData = {
         partyId,
-        extractedEventData,
+        extractedEventData: overrideData ?? extractedEventData,
         validationResult,
         extractionResult,
         pinterestUrl,
@@ -866,7 +866,7 @@ export default function PartyPlanOS() {
     setShowDataInput(false)
     
     // Proceed to build mode with complete data
-    await transitionToBuildMode()
+    await transitionToBuildMode(completeData)
   }
   
   const handleDataSkip = () => {

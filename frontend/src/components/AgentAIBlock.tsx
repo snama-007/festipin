@@ -1,11 +1,772 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Image, { StaticImageData } from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import defaultThemeImage from '@/app/assets/theme_2.jpg'
 import defaultCakeImage from '@/app/assets/cake_1.jpg'
+import AgentDataItems, { AgentDataItem } from './AgentDataItems'
+
+const cityIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M12 21c4-4.2 6-7.2 6-10a6 6 0 1 0-12 0c0 2.8 2 5.8 6 10z" />
+    <circle cx="12" cy="11" r="2.5" />
+  </svg>
+)
+
+const pinIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="4" y="4" width="16" height="12" rx="2" />
+    <path d="M4 10h16" />
+    <path d="M8 14h4" />
+  </svg>
+)
+
+const calendarIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M16 3v4" />
+    <path d="M8 3v4" />
+    <path d="M3 11h18" />
+  </svg>
+)
+
+const clockIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+)
+
+const budgetIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M12 3v18" />
+    <path d="M8 7a4 4 0 0 1 4-4c2.2 0 4 1.8 4 4s-1.8 4-4 4" />
+    <path d="M16 17a4 4 0 0 1-4 4c-2.2 0-4-1.8-4-4s1.8-4 4-4" />
+  </svg>
+)
+
+const paletteIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M12 3a9 9 0 0 0-9 9 5 5 0 0 0 5 5h1a2 2 0 1 1 0 4 9 9 0 1 0 3-18z" />
+    <circle cx="7.5" cy="10.5" r="1" />
+    <circle cx="12" cy="7.5" r="1" />
+    <circle cx="16.5" cy="10.5" r="1" />
+  </svg>
+)
+
+const sparkleIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+  </svg>
+)
+
+const venueIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M4 22V9l8-6 8 6v13" />
+    <path d="M9 22v-6h6v6" />
+    <path d="M3 10h18" />
+  </svg>
+)
+
+const chefIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M4 20v-3a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v3" />
+    <path d="M9 7V5a3 3 0 0 1 6 0v2" />
+    <path d="M5 10h14" />
+  </svg>
+)
+
+const balloonIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M12 3c4 0 7 3 7 7 0 3.3-2.3 6.4-5 7l1 4H9l1-4c-2.7-.6-5-3.7-5-7 0-4 3-7 7-7z" />
+  </svg>
+)
+
+const vendorIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M4 7h16v13H4z" />
+    <path d="M9 4h6l1 3H8l1-3z" />
+    <path d="M9 10v4" />
+    <path d="M15 10v4" />
+  </svg>
+)
+
+const checklistIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M9 11l3 3L22 4" />
+    <path d="M3 6h3" />
+    <path d="M3 12h3" />
+    <path d="M3 18h3" />
+  </svg>
+)
+
+const bakeryIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M4 6h16v4H4z" />
+    <path d="M5 6c0-2.2 2-4 4-4h6c2 0 4 1.8 4 4" />
+    <path d="M6 10v10h12V10" />
+    <path d="M10 14h4" />
+  </svg>
+)
+
+const pickString = (...values: any[]): string | undefined => {
+  for (const value of values) {
+    if (!value) continue
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed) return trimmed
+    }
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return String(value)
+    }
+    if (typeof value === 'object') {
+      if (typeof value.label === 'string' && value.label.trim()) return value.label.trim()
+      if (typeof value.value === 'string' && value.value.trim()) return value.value.trim()
+      if (typeof value.text === 'string' && value.text.trim()) return value.text.trim()
+    }
+  }
+  return undefined
+}
+
+const parseAmount = (input: any): number | undefined => {
+  if (typeof input === 'number' && !Number.isNaN(input)) return input
+  if (typeof input === 'string') {
+    const numeric = Number(input.replace(/[^0-9.-]+/g, ''))
+    return Number.isNaN(numeric) ? undefined : numeric
+  }
+  return undefined
+}
+
+const formatDateValue = (value: any): string | undefined => {
+  if (!value) return undefined
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    }
+    return value
+  }
+  if (typeof value === 'number') {
+    return String(value)
+  }
+  if (typeof value === 'object') {
+    if (value.date) return formatDateValue(value.date)
+    if (value.start || value.end) {
+      const start = formatDateValue(value.start)
+      const end = formatDateValue(value.end)
+      return [start, end].filter(Boolean).join(' – ')
+    }
+    if (value.label) return formatDateValue(value.label)
+  }
+  return undefined
+}
+
+const formatTimeValue = (value: any): string | undefined => {
+  if (!value) return undefined
+  if (typeof value === 'string') return value
+  if (typeof value === 'object') {
+    const start = pickString(value.start, value.begin, value.from)
+    const end = pickString(value.end, value.finish, value.to)
+    if (start || end) {
+      return [start, end].filter(Boolean).join(' – ')
+    }
+    if (value.label) return value.label
+  }
+  return undefined
+}
+
+const formatBudgetRange = (value: any): string | undefined => {
+  if (!value) return undefined
+  if (typeof value === 'string') return value
+  if (typeof value === 'number') {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0
+    }).format(value)
+  }
+  if (typeof value === 'object') {
+    const currency = typeof value.currency === 'string' && value.currency.trim()
+      ? value.currency.trim().toUpperCase()
+      : 'USD'
+    const formatter = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0
+    })
+    const estimated = parseAmount(value.estimated)
+    if (estimated) return formatter.format(estimated)
+    const min = parseAmount(value.min)
+    const max = parseAmount(value.max)
+    if (min && max) return `${formatter.format(min)} – ${formatter.format(max)}`
+    if (min) return `From ${formatter.format(min)}`
+    if (max) return `Up to ${formatter.format(max)}`
+  }
+  return undefined
+}
+
+const safeArray = <T,>(value: any): T[] => {
+  return Array.isArray(value) ? value.filter(Boolean) : []
+}
+
+const linkIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M10.59 13.41a1.996 1.996 0 0 0 2.82 0l5.59-5.59a1.996 1.996 0 0 0-2.82-2.82l-1.53 1.53" />
+    <path d="M13.41 10.59a1.996 1.996 0 0 0-2.82 0l-5.59 5.59a1.996 1.996 0 0 0 2.82 2.82l1.53-1.53" />
+  </svg>
+)
+
+const shortenLink = (value: string) => {
+  try {
+    const url = new URL(value)
+    return url.hostname.replace(/^www\./, '')
+  } catch {
+    return value.length > 28 ? `${value.slice(0, 25)}…` : value
+  }
+}
+
+const buildInputClassifierDetails = (
+  data: any,
+  onInteraction?: (action: string, value?: any) => void
+): { items: AgentDataItem[]; highlights: string[]; nextMove?: string; confidence?: number } => {
+  if (!data) {
+    return { items: [], highlights: [] }
+  }
+
+  const buildAction = (action: string, value?: any) =>
+    onInteraction ? () => onInteraction(action, value) : undefined
+
+  const candidateSources = [
+    data.party_summary,
+    data.summary?.party,
+    data.summary,
+    data.extracted_event_data,
+    data.extractedEventData,
+    data.metadata?.extractedEventData,
+    data.metadata?.party_data,
+    data.metadata?.event_details,
+    data.metadata?.source_data?.extractedEventData,
+    data.metadata?.source_data?.extractionResult?.extracted_data,
+    data.metadata?.source_data?.extraction_result?.extracted_data,
+    data.metadata?.source_data?.extractionResult?.event_data,
+    data.metadata?.source_data?.extraction_result?.event_data,
+    data.metadata?.extraction_result?.extracted_data,
+    data.metadata?.latest_inputs,
+    data.metadata?.session?.extracted_event_data,
+    data.party,
+    data.data
+  ]
+
+  const summarySource = candidateSources.reduce<Record<string, any>>((acc, entry) => {
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      return { ...acc, ...entry }
+    }
+    return acc
+  }, {})
+
+  const locationInfo =
+    summarySource.location ||
+    summarySource.venue ||
+    summarySource.event_location ||
+    summarySource.destination ||
+    data.location ||
+    data.metadata?.location ||
+    {}
+
+  const locationName = pickString(
+    locationInfo.name,
+    summarySource.location_name,
+    summarySource.venue_name,
+    summarySource.destination_name,
+    summarySource.location_description,
+    summarySource.venue_description
+  )
+
+  const cityValue = pickString(
+    summarySource.city,
+    locationInfo.city,
+    summarySource.region,
+    summarySource.metro,
+    data.city,
+    data.metadata?.city
+  )
+
+  const addressValue = pickString(
+    locationInfo.address,
+    summarySource.location_address,
+    summarySource.address
+  )
+
+  const locationType = pickString(
+    locationInfo.type,
+    summarySource.location_type,
+    summarySource.venue_type,
+    summarySource.location_category,
+    data.location?.type
+  )
+
+  const locationParts = [locationType, locationName, cityValue].filter(Boolean)
+  const locationDisplay = locationParts.length
+    ? locationParts.join(' · ')
+    : addressValue
+
+  const dateValue = formatDateValue(
+    summarySource.date ||
+    summarySource.event_date ||
+    summarySource.celebration_date ||
+    summarySource.schedule?.date ||
+    summarySource.calendar_date ||
+    summarySource.timeline?.date ||
+    summarySource.when ||
+    summarySource.calendar ||
+    data.date ||
+    data.metadata?.date
+  )
+
+  const timeValue = formatTimeValue(
+    summarySource.time ||
+    summarySource.time_window ||
+    summarySource.timeframe ||
+    summarySource.schedule ||
+    summarySource.schedule_window ||
+    summarySource.hours ||
+    summarySource.timeline?.time ||
+    summarySource.event_time ||
+    summarySource.time_range ||
+    data.time
+  )
+
+  const budgetValue = formatBudgetRange(
+    summarySource.budget ||
+    summarySource.estimated_budget ||
+    summarySource.total_budget ||
+    summarySource.budget_range ||
+    summarySource.investment ||
+    data.budget ||
+    data.extracted_event_data?.budget
+  )
+
+  const eventType = pickString(
+    summarySource.eventType,
+    summarySource.event_type,
+    summarySource.occasion_type,
+    summarySource.celebration_type,
+    data.eventType
+  )
+
+  const guestInfo = summarySource.guestCount ||
+    summarySource.guest_count ||
+    summarySource.guest_counts ||
+    summarySource.guests ||
+    data.guestCount
+
+  let guestValue: string | undefined
+  if (guestInfo) {
+    if (typeof guestInfo === 'number') {
+      guestValue = `${guestInfo} guests`
+    } else if (typeof guestInfo === 'string') {
+      guestValue = guestInfo
+    } else if (typeof guestInfo === 'object') {
+      const adults = pickString(guestInfo.adults, guestInfo.adult)
+      const kids = pickString(guestInfo.kids, guestInfo.children, guestInfo.kid)
+      const total = pickString(guestInfo.total, guestInfo.count)
+      if (total) {
+        guestValue = `${total} guests`
+      } else {
+        const parts = [
+          adults ? `${adults} adults` : null,
+          kids ? `${kids} kids` : null
+        ].filter(Boolean)
+        guestValue = parts.join(' · ')
+      }
+    }
+  }
+
+  const highlightCandidates = [
+    data.highlights,
+    data.summary?.highlights,
+    data.summary_points,
+    data.top_insights,
+    data.key_takeaways,
+    data.insights,
+    data.metadata?.highlights
+  ]
+
+  const highlights = highlightCandidates
+    .filter((entry): entry is string[] => Array.isArray(entry))
+    .flat()
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+
+  const uniqueHighlights = Array.from(new Set(highlights))
+
+  const nextMove = pickString(
+    data.recommended_next_step,
+    data.next_best_step,
+    data.next_step,
+    data.summary?.next_step,
+    data.action_item,
+    data.recommendations?.[0]
+  )
+
+  const confidence =
+    typeof data.confidence === 'number' && data.confidence > 0 && data.confidence <= 1
+      ? Math.round(data.confidence * 100)
+      : typeof data.confidence === 'number'
+        ? Math.round(data.confidence)
+        : undefined
+
+  const sourceLink = pickString(
+    data.source,
+    data.source_url,
+    data.metadata?.source_url,
+    data.metadata?.original_url,
+    data.metadata?.inputs?.[0]?.content
+  )
+
+  const items: AgentDataItem[] = []
+
+  if (sourceLink) {
+    items.push({
+      key: 'source',
+      label: 'Source',
+      value: shortenLink(sourceLink),
+      icon: linkIcon,
+      tone: 'slate',
+      actionLabel: 'Open',
+      onAction: () => {
+        if (typeof window !== 'undefined') {
+          window.open(sourceLink, '_blank', 'noopener,noreferrer')
+        }
+      }
+    })
+  }
+
+  items.push({
+    key: 'location',
+    label: 'Location',
+    value: locationDisplay,
+    hint: locationDisplay ? undefined : 'Add the celebration location to align vendors.',
+    icon: venueIcon,
+    tone: 'indigo',
+    actionLabel: onInteraction ? 'Edit' : undefined,
+    onAction: buildAction('edit_location')
+  })
+
+  items.push({
+    key: 'date',
+    label: 'Event Date',
+    value: dateValue,
+    hint: dateValue ? undefined : 'Set the event date to sync timelines.',
+    icon: calendarIcon,
+    tone: 'purple',
+    actionLabel: onInteraction ? 'Schedule' : undefined,
+    onAction: buildAction('edit_date')
+  })
+
+  items.push({
+    key: 'time',
+    label: 'Event Time',
+    value: timeValue,
+    hint: timeValue ? undefined : 'Add timing details to pace the experience.',
+    icon: clockIcon,
+    tone: 'amber',
+    actionLabel: onInteraction ? 'Edit' : undefined,
+    onAction: buildAction('edit_time')
+  })
+
+  items.push({
+    key: 'budget',
+    label: 'Budget Target',
+    value: budgetValue,
+    hint: budgetValue ? 'Recommendations will stay within this range.' : 'Drop a range to frame recommendations.',
+    icon: budgetIcon,
+    tone: 'emerald',
+    actionLabel: onInteraction ? 'Adjust' : undefined,
+    onAction: buildAction('edit_budget')
+  })
+
+  items.push({
+    key: 'event-type',
+    label: 'Event Type',
+    value: eventType,
+    hint: eventType ? undefined : 'Tell us the occasion to activate the right agents.',
+    icon: sparkleIcon,
+    tone: 'blue',
+    actionLabel: onInteraction ? 'Edit' : undefined,
+    onAction: buildAction('edit_event_type')
+  })
+
+  items.push({
+    key: 'guest-count',
+    label: 'Guest Count',
+    value: guestValue,
+    hint: guestValue ? undefined : 'Add a guest estimate to size venues and catering.',
+    icon: balloonIcon,
+    tone: 'rose',
+    actionLabel: onInteraction ? 'Edit' : undefined,
+    onAction: buildAction('edit_guest_count')
+  })
+
+  return {
+    items,
+    highlights: uniqueHighlights,
+    nextMove,
+    confidence
+  }
+}
+
+const buildGenericHighlights = (
+  agentKey: string,
+  data: any,
+  onInteraction?: (action: string, value?: any) => void
+): AgentDataItem[] => {
+  if (!data) return []
+
+  const buildAction = (action: string) => onInteraction ? () => onInteraction(action) : undefined
+  const items: AgentDataItem[] = []
+
+  switch (agentKey) {
+    case 'budget_agent': {
+      let budgetValue = 1000
+      if (data.total_budget) {
+        if (typeof data.total_budget === 'object') {
+          budgetValue = data.total_budget.estimated || data.total_budget.min || data.total_budget.max || 1000
+        } else if (typeof data.total_budget === 'number') {
+          budgetValue = data.total_budget
+        } else if (typeof data.total_budget === 'string') {
+          budgetValue = parseInt(data.total_budget) || 1000
+        }
+      }
+
+      const currency = data.currency || data.total_budget?.currency || 'USD'
+      const formattedBudget = new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0
+      }).format(budgetValue)
+
+      items.push({
+        key: 'budget-total',
+        label: 'Total Budget',
+        value: formattedBudget,
+        icon: budgetIcon,
+        tone: 'emerald',
+        actionLabel: onInteraction ? 'Adjust' : undefined,
+        onAction: buildAction('adjust_budget')
+      })
+
+      const allocationCount = safeArray<any>(data.allocation).length
+      items.push({
+        key: 'budget-allocation',
+        label: 'Categories',
+        value: allocationCount ? `${allocationCount} allocated` : undefined,
+        hint: allocationCount ? undefined : 'Allocate categories to balance spend.',
+        icon: checklistIcon,
+        tone: 'slate',
+        actionLabel: allocationCount ? undefined : (onInteraction ? 'Add' : undefined),
+        onAction: allocationCount ? undefined : buildAction('add_allocation')
+      })
+      break
+    }
+
+    case 'theme_agent': {
+      const primaryTheme = pickString(data.primary_theme, data.theme, data.hero_descriptor)
+      const paletteSize = safeArray<string>(data.palette).length
+      items.push({
+        key: 'theme-primary',
+        label: 'Primary Theme',
+        value: primaryTheme,
+        icon: sparkleIcon,
+        tone: 'purple',
+        actionLabel: onInteraction ? 'Swap' : undefined,
+        onAction: buildAction('change_theme')
+      })
+      items.push({
+        key: 'theme-palette',
+        label: 'Palette',
+        value: paletteSize ? `${paletteSize} colors` : undefined,
+        icon: paletteIcon,
+        tone: 'indigo',
+        hint: paletteSize ? undefined : 'Pick colors to guide decor + lighting.'
+      })
+      break
+    }
+
+    case 'cake_agent': {
+      const bakeries = safeArray<any>(data.recommended_bakeries)
+      const highlightBakery = bakeries[0]
+      items.push({
+        key: 'cake-count',
+        label: 'Bakeries',
+        value: bakeries.length ? `${bakeries.length} curated` : undefined,
+        icon: bakeryIcon,
+        tone: 'rose',
+        hint: bakeries.length ? undefined : 'Need tastings? Add a bakery to start.'
+      })
+      if (highlightBakery) {
+        items.push({
+          key: 'cake-signature',
+          label: highlightBakery.name || 'Signature Dessert',
+          value: pickString(highlightBakery.signature, highlightBakery.estimate),
+          icon: sparkleIcon,
+          tone: 'purple'
+        })
+      }
+      break
+    }
+
+    case 'decor_agent': {
+      const focalCount = safeArray<string>(data.focal_elements).length
+      items.push({
+        key: 'decor-hero',
+        label: 'Focal Elements',
+        value: focalCount ? `${focalCount} hero moments` : undefined,
+        icon: sparkleIcon,
+        tone: 'purple',
+        hint: focalCount ? undefined : 'Highlight the wow moments to shape decor.'
+      })
+      const diyTips = safeArray<string>(data.diy_tips)
+      if (diyTips[0]) {
+        items.push({
+          key: 'decor-diy',
+          label: 'DIY Boost',
+          value: diyTips[0],
+          icon: checklistIcon,
+          tone: 'emerald'
+        })
+      }
+      break
+    }
+
+    case 'balloon_agent': {
+      const artists = safeArray<any>(data.recommended_artists)
+      items.push({
+        key: 'balloon-artists',
+        label: 'Balloon Artists',
+        value: artists.length ? `${artists.length} stylists` : undefined,
+        icon: balloonIcon,
+        tone: 'rose',
+        hint: artists.length ? undefined : 'Bring in a balloon crew to frame entrances.'
+      })
+      if (artists[0]?.package) {
+        items.push({
+          key: 'balloon-package',
+          label: artists[0].name || 'Signature Package',
+          value: artists[0].package,
+          icon: sparkleIcon,
+          tone: 'blue'
+        })
+      }
+      break
+    }
+
+    case 'venue_agent': {
+      const venues = safeArray<any>(data.recommended_venues)
+      items.push({
+        key: 'venue-count',
+        label: 'Matching Venues',
+        value: venues.length ? `${venues.length} scouted` : undefined,
+        icon: venueIcon,
+        tone: 'blue',
+        hint: venues.length ? undefined : 'Add capacity + neighborhood to sharpen matches.',
+        actionLabel: venues.length ? undefined : (onInteraction ? 'Add' : undefined),
+        onAction: venues.length ? undefined : buildAction('add_venue_filters')
+      })
+      const lead = venues[0]
+      if (lead?.neighborhood || lead?.city || lead?.name) {
+        items.push({
+          key: 'venue-location',
+          label: 'Lead Location',
+          value: pickString(lead.neighborhood, lead.city, lead.name),
+          icon: cityIcon,
+          tone: 'indigo'
+        })
+      }
+      break
+    }
+
+    case 'catering_agent': {
+      const caterers = safeArray<any>(data.recommended_caterers)
+      items.push({
+        key: 'caterer-count',
+        label: 'Catering Options',
+        value: caterers.length ? `${caterers.length} chefs` : undefined,
+        icon: chefIcon,
+        tone: 'emerald',
+        hint: caterers.length ? undefined : 'List dietary needs to unlock tailored menus.'
+      })
+      const menuPairings = safeArray<string>(data.menu_pairings)
+      if (menuPairings[0]) {
+        items.push({
+          key: 'menu-highlight',
+          label: 'Menu Highlight',
+          value: menuPairings[0],
+          icon: paletteIcon,
+          tone: 'amber'
+        })
+      }
+      break
+    }
+
+    case 'vendor_agent': {
+      const categories = Object.keys(data.vendors_by_category || {})
+      items.push({
+        key: 'vendor-coverage',
+        label: 'Categories',
+        value: categories.length ? `${categories.length} covered` : undefined,
+        icon: vendorIcon,
+        tone: 'slate',
+        hint: categories.length ? undefined : 'Add vendor categories to grow your roster.'
+      })
+      const totalVendors = categories.reduce(
+        (acc, category) => acc + safeArray<any>(data.vendors_by_category?.[category]).length,
+        0
+      )
+      if (totalVendors) {
+        items.push({
+          key: 'vendor-total',
+          label: 'Vendor Count',
+          value: `${totalVendors} in play`,
+          icon: checklistIcon,
+          tone: 'indigo'
+        })
+      }
+      break
+    }
+
+    case 'planner_agent': {
+      const agenda = safeArray<any>(data.final_plan?.agenda || data.agenda)
+      const checklist = safeArray<any>(data.final_plan?.checklist || data.checklist)
+      items.push({
+        key: 'planner-agenda',
+        label: 'Agenda Beats',
+        value: agenda.length ? `${agenda.length} lined up` : undefined,
+        icon: clockIcon,
+        tone: 'blue'
+      })
+      items.push({
+        key: 'planner-checklist',
+        label: 'Checklist',
+        value: checklist.length ? `${checklist.length} tasks` : undefined,
+        icon: checklistIcon,
+        tone: 'emerald',
+        hint: checklist.length ? undefined : 'Add follow-ups to keep your plan on track.'
+      })
+      break
+    }
+
+    default:
+      return []
+  }
+
+  return items
+}
 
 interface AgentAIBlockProps {
   agentKey: string
@@ -76,10 +837,11 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
     : (isFocus ? 'h-40' : isSecondary ? 'h-28' : 'h-36')
   const emojiSizeClass = isFocus ? 'text-6xl' : isSecondary ? 'text-4xl' : 'text-5xl'
   const cardSizeClass = isFocus
-    ? 'w-full max-w-4xl min-h-[26rem]'
+    ? 'w-full max-w-4xl min-h-[28rem]'
     : isSecondary
-      ? 'w-80 min-h-[20rem]'
-      : 'w-72 h-[22rem]'
+      ? 'w-[21rem] min-h-[22rem]'
+      : 'w-[22rem] h-[24rem]'
+  const highlightPadding = isFocus ? 'px-8 pt-6' : isSecondary ? 'px-5 pt-4' : 'px-5 pt-4'
   const standardImageWrapper = isFocus ? 'px-8 pt-8' : isSecondary ? 'px-5 pt-5' : 'px-5 pt-5'
   const visualImageWrapper = isFocus ? 'px-6 pt-6' : isSecondary ? 'px-4 pt-4' : 'px-4 pt-4'
   const imageWrapperClass = `relative ${isVisualAgent ? visualImageWrapper : standardImageWrapper}`
@@ -90,8 +852,32 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
       : 'flex-1 p-6 flex flex-col justify-between'
 
   useEffect(() => {
-    setLocalData(data)
+    if (!data) {
+      setLocalData(undefined)
+      return
+    }
+
+    const normalized =
+      (typeof data === 'object' && data !== null && 'result' in data && data.result)
+        ? (data as any).result
+        : (typeof data === 'object' && data !== null && 'data' in data && (data as any).data)
+          ? (data as any).data
+          : data
+
+    setLocalData(normalized)
   }, [data])
+
+  const inputClassifierDetails = useMemo(() => {
+    if (agentKey !== 'input_classifier' || !localData) return null
+    return buildInputClassifierDetails(localData, onInteraction)
+  }, [agentKey, localData, onInteraction])
+
+  const dataHighlights = useMemo(() => {
+    if (agentKey === 'input_classifier') {
+      return inputClassifierDetails?.items ?? []
+    }
+    return localData ? buildGenericHighlights(agentKey, localData, onInteraction) : []
+  }, [agentKey, localData, onInteraction, inputClassifierDetails])
 
   // Drag and drop handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -333,14 +1119,57 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
   const renderDynamicData = () => {
     if (!localData) return null
 
-    // Debug logging to help identify the issue
-    console.log(`AgentAIBlock ${agentKey} data:`, localData);
     const summaryWrapper = isFocus ? 'space-y-5 text-center' : 'space-y-3'
     const badgeClass = isFocus ? 'text-xs tracking-[0.35em] uppercase text-gray-400' : 'text-xs text-gray-500 uppercase tracking-wide'
     const statRow = isFocus ? 'flex flex-col items-center gap-1' : 'flex items-center justify-between'
     const labelClass = isFocus ? 'text-sm text-gray-500' : 'text-sm text-gray-600'
 
     switch (agentKey) {
+      case 'input_classifier': {
+        const highlights = inputClassifierDetails?.highlights.slice(0, isFocus ? 4 : 3) ?? []
+        const nextMove = inputClassifierDetails?.nextMove
+        const confidence = inputClassifierDetails?.confidence
+
+        return (
+          <div className={isFocus ? 'space-y-5' : 'space-y-4'}>
+            <div className={badgeClass}>Input Insights</div>
+            {highlights.length > 0 ? (
+              <div className="rounded-3xl border border-indigo-50 bg-white/85 p-4 shadow-inner shadow-indigo-100/40">
+                <div className="space-y-2">
+                  {highlights.map((highlight, index) => (
+                    <div key={`highlight-${index}`} className="flex items-start gap-2 text-sm text-gray-700">
+                      <span className="mt-0.5 text-indigo-400">✦</span>
+                      <span>{highlight}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-dashed border-indigo-100 p-4 text-sm text-gray-500">
+                Drop a link or prompt to unlock highlighted party cues.
+              </div>
+            )}
+
+            {nextMove && (
+              <div className="rounded-3xl bg-gradient-to-r from-indigo-50 via-blue-50 to-purple-50 p-4 text-sm text-indigo-700 shadow-sm">
+                <div className="flex items-center gap-2 text-sm font-semibold text-indigo-600">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="m9 18 6-6-6-6" />
+                  </svg>
+                  <span>Next Move</span>
+                </div>
+                <p className="mt-1 leading-relaxed text-indigo-700">{nextMove}</p>
+              </div>
+            )}
+
+            {typeof confidence === 'number' && (
+              <div className="text-xs text-gray-400 text-center tracking-[0.2em] uppercase">
+                {confidence}% confidence in extraction
+              </div>
+            )}
+          </div>
+        )
+      }
       case 'budget_agent':
         let budgetValue = 1000; // Default value
         if (localData.total_budget) {
@@ -718,6 +1547,12 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
         />
       )}
       
+      {dataHighlights.length > 0 && (
+        <div className={`relative z-30 ${highlightPadding}`}>
+          <AgentDataItems items={dataHighlights} compact={!isFocus} />
+        </div>
+      )}
+
       {/* Agent Image Section (40%) */}
       <div className={imageWrapperClass}>
         {renderAgentImage()}
@@ -774,7 +1609,6 @@ const AgentAIBlock: React.FC<AgentAIBlockProps> = ({
             className="agent-menu-button absolute bottom-0 right-0 w-6 h-6 bg-white/90 hover:bg-white rounded-full flex items-center justify-center text-gray-600 hover:text-gray-800 shadow-lg backdrop-blur-sm border border-gray-200/50 cursor-pointer z-10"
             onClick={(e) => {
               e.stopPropagation()
-              console.log('Menu button clicked, current state:', isMenuOpen)
               setIsMenuOpen(!isMenuOpen)
             }}
             whileHover={{ scale: 1.1 }}
