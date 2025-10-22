@@ -8,11 +8,12 @@ This agent runs 24/7 as a background task.
 """
 
 import asyncio
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional, Any
 import re
 
 from app.services.event_bus import get_event_bus
 from app.services.party_state_store import get_state_store
+from app.services.keyword_expansions import get_expanded_routing_rules
 from app.models.events import (
     InputAddedEvent,
     InputRemovedEvent,
@@ -38,16 +39,14 @@ class InputAnalyzerAgent:
         self.event_bus = get_event_bus()
         self.state_store = get_state_store()
 
-        # Routing rules: category -> keywords
-        self.routing_rules = {
-            'theme': ['theme', 'decor', 'decoration', 'style', 'aesthetic', 'jungle', 'space',
-                     'unicorn', 'princess', 'superhero', 'dinosaur', 'safari', 'rainbow'],
-            'cake': ['cake', 'dessert', 'sweet', 'tier', 'frosting', 'bakery', 'birthday cake'],
-            'venue': ['venue', 'location', 'space', 'hall', 'room', 'park', 'place', 'where'],
-            'catering': ['food', 'menu', 'catering', 'meal', 'dining', 'eat', 'lunch', 'dinner'],
-            'vendor': ['vendor', 'supplier', 'service', 'professional', 'balloon', 'decoration',
-                      'photography', 'photographer', 'entertainment', 'dj', 'magician'],
-        }
+        # Routing rules: category -> keywords (expanded with theme variations and synonyms)
+        self.routing_rules = get_expanded_routing_rules()
+
+        logger.debug(
+            "InputAnalyzer initialized with expanded keywords",
+            theme_keywords_count=len(self.routing_rules.get('theme', [])),
+            total_categories=len(self.routing_rules)
+        )
 
         # Agent dependency graph (which agents depend on which)
         self.agent_dependencies = {
@@ -159,14 +158,19 @@ class InputAnalyzerAgent:
             content_preview=payload.content[:50]
         )
 
-        # 1. Classify input
-        classification = self._classify_input(payload.content, payload.tags)
+        # 1. Classify input (with metadata for vision/LLM context)
+        classification = self._classify_input(
+            payload.content,
+            payload.tags,
+            payload.metadata
+        )
 
         logger.debug(
             "Input classified",
             party_id=party_id,
             input_id=payload.input_id,
-            categories=list(classification.keys())
+            categories=list(classification.keys()),
+            has_vision_context=bool(payload.metadata and payload.metadata.get("agent_context"))
         )
 
         # 2. Get party state
@@ -242,7 +246,7 @@ class InputAnalyzerAgent:
         # Classify all remaining inputs
         all_classifications: Dict[str, List] = {}
         for inp in party_state.inputs:
-            classification = self._classify_input(inp.content, inp.tags)
+            classification = self._classify_input(inp.content, inp.tags, inp.metadata)
             for category, score in classification.items():
                 if category not in all_classifications:
                     all_classifications[category] = []
@@ -298,13 +302,20 @@ class InputAnalyzerAgent:
                     reason="input_removed_revalidate"
                 )
 
-    def _classify_input(self, content: str, tags: List[str]) -> Dict[str, float]:
+    def _classify_input(
+        self,
+        content: str,
+        tags: List[str],
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, float]:
         """
         Classify input into categories based on keywords.
+        Enhanced to utilize vision context and LLM agent instructions.
 
         Args:
-            content: Input text content
-            tags: Pre-assigned tags
+            content: Input text content (may include vision description)
+            tags: Pre-assigned tags (may include vision-derived tags)
+            metadata: Optional metadata with agent_context from vision/LLM
 
         Returns:
             Dictionary of category -> score (higher = better match)
@@ -330,6 +341,28 @@ class InputAnalyzerAgent:
 
             if score > 0:
                 classification[category] = score
+
+        # NEW: Boost scores based on vision analysis or LLM agent instructions
+        if metadata:
+            agent_context = metadata.get("agent_context", {})
+
+            # If agent_context has specific agent instructions, boost those agents
+            for agent_key in agent_context.keys():
+                # Extract category from agent_key (e.g., "theme_agent" -> "theme")
+                category = agent_key.replace("_agent", "")
+                if category in classification:
+                    classification[category] += 5.0  # Boost from vision/LLM
+                    logger.debug(
+                        "Boosted agent from vision/LLM context",
+                        category=category,
+                        new_score=classification[category]
+                    )
+                else:
+                    classification[category] = 5.0  # Add if not already present
+                    logger.debug(
+                        "Added agent from vision/LLM context",
+                        category=category
+                    )
 
         # Always include theme if no classification
         if not classification:

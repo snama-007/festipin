@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Festipin Backend - Frontend Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 { color: #667eea; margin-top: 0; }
+        h2 { color: #764ba2; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        .status { padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .status.success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .status.error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .status.info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+        button:hover { background: #764ba2; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+        .event-log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        .event-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 3px solid #667eea;
+            background: white;
+            border-radius: 4px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Festipin Backend - Frontend Integration Test</h1>
+
+        <!-- Connection Status -->
+        <div id="connectionStatus" class="status info">
+            <strong>Status:</strong> Testing backend connection...
+        </div>
+
+        <!-- Test 1: Health Check -->
+        <section>
+            <h2>1. Health Check</h2>
+            <button onclick="testHealth()">Test /health Endpoint</button>
+            <pre id="healthResult">Click button to test...</pre>
+        </section>
+
+        <!-- Test 2: Hybrid Input Processing -->
+        <section>
+            <h2>2. Hybrid Input Processing</h2>
+            <textarea id="partyInput" rows="3" placeholder="Describe your party... (e.g., 'Birthday party for 30 kids, superhero theme, outdoor venue')">Birthday party for 30 kids, superhero theme, outdoor venue</textarea>
+            <button onclick="testHybridInput()">Process Input</button>
+            <pre id="hybridResult">Enter text and click button...</pre>
+        </section>
+
+        <!-- Test 3: Event-Driven Party Planning -->
+        <section>
+            <h2>3. Event-Driven Party Planning (Real-Time)</h2>
+
+            <div class="grid">
+                <div>
+                    <h3>Controls</h3>
+                    <input type="text" id="partyId" placeholder="Party ID" value="test-party-123">
+                    <button onclick="createParty()">Create Party</button>
+                    <button onclick="connectWebSocket()">Connect WebSocket</button>
+                    <button onclick="disconnectWebSocket()">Disconnect</button>
+
+                    <h4>Add Input</h4>
+                    <input type="text" id="newInput" placeholder="Add party detail...">
+                    <button onclick="addInput()">Add Input</button>
+
+                    <h4>Get Agent Data</h4>
+                    <select id="agentSelect">
+                        <option value="budget_agent">Budget Agent</option>
+                        <option value="theme_agent">Theme Agent</option>
+                        <option value="venue_agent">Venue Agent</option>
+                        <option value="cake_agent">Cake Agent</option>
+                    </select>
+                    <button onclick="getAgentData()">Get Data</button>
+                </div>
+
+                <div>
+                    <h3>Event Log</h3>
+                    <div id="eventLog" class="event-log">
+                        <div class="event-item">Waiting for events...</div>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Agent Results</h3>
+            <pre id="agentResult">No data yet...</pre>
+        </section>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:9000';
+        let ws = null;
+        let currentPartyId = null;
+
+        // Test backend health
+        async function testHealth() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`);
+                const data = await response.json();
+                document.getElementById('healthResult').textContent = JSON.stringify(data, null, 2);
+                updateStatus('success', `✅ Backend is healthy! Environment: ${data.environment}`);
+            } catch (error) {
+                document.getElementById('healthResult').textContent = `Error: ${error.message}`;
+                updateStatus('error', '❌ Cannot connect to backend. Make sure it\'s running on port 9000');
+            }
+        }
+
+        // Test hybrid input processing
+        async function testHybridInput() {
+            const text = document.getElementById('partyInput').value;
+            const resultEl = document.getElementById('hybridResult');
+            resultEl.textContent = 'Processing...';
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v1/input/process-hybrid`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+
+                const data = await response.json();
+                resultEl.textContent = JSON.stringify(data, null, 2);
+                updateStatus('success', '✅ Input processed successfully!');
+            } catch (error) {
+                resultEl.textContent = `Error: ${error.message}`;
+                updateStatus('error', `❌ Error processing input: ${error.message}`);
+            }
+        }
+
+        // Create event-driven party
+        async function createParty() {
+            currentPartyId = document.getElementById('partyId').value;
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/v1/event-driven/party`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        party_id: currentPartyId,
+                        initial_inputs: []
+                    })
+                });
+
+                const data = await response.json();
+                addEventToLog('success', `Party created: ${currentPartyId}`);
+                updateStatus('success', `✅ Party "${currentPartyId}" created!`);
+            } catch (error) {
+                addEventToLog('error', `Failed to create party: ${error.message}`);
+                updateStatus('error', `❌ Error: ${error.message}`);
+            }
+        }
+
+        // Connect WebSocket
+        function connectWebSocket() {
+            const partyId = document.getElementById('partyId').value;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                addEventToLog('info', 'Already connected');
+                return;
+            }
+
+            ws = new WebSocket(`ws://localhost:9000/ws/party/${partyId}`);
+
+            ws.onopen = () => {
+                addEventToLog('success', '✅ WebSocket connected');
+                updateStatus('success', '✅ WebSocket connected - listening for events...');
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                addEventToLog('info', `${data.event_type}: ${data.agent_id || 'system'}`);
+
+                if (data.event_type === 'agent.completed') {
+                    document.getElementById('agentResult').textContent =
+                        JSON.stringify(data.data, null, 2);
+                }
+            };
+
+            ws.onerror = (error) => {
+                addEventToLog('error', 'WebSocket error');
+                updateStatus('error', '❌ WebSocket error');
+            };
+
+            ws.onclose = () => {
+                addEventToLog('info', 'WebSocket closed');
+                updateStatus('info', 'WebSocket disconnected');
+            };
+        }
+
+        // Disconnect WebSocket
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                addEventToLog('info', 'Disconnected');
+            }
+        }
+
+        // Add input to party
+        async function addInput() {
+            const partyId = document.getElementById('partyId').value;
+            const content = document.getElementById('newInput').value;
+
+            if (!content) {
+                alert('Please enter some text');
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${BACKEND_URL}/api/v1/event-driven/party/${partyId}/input`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'text',
+                            content: content
+                        })
+                    }
+                );
+
+                const data = await response.json();
+                addEventToLog('success', `Input added: "${content}"`);
+                document.getElementById('newInput').value = '';
+            } catch (error) {
+                addEventToLog('error', `Failed to add input: ${error.message}`);
+            }
+        }
+
+        // Get agent data
+        async function getAgentData() {
+            const partyId = document.getElementById('partyId').value;
+            const agentId = document.getElementById('agentSelect').value;
+
+            try {
+                const response = await fetch(
+                    `${BACKEND_URL}/api/v1/event-driven/party/${partyId}/agents/${agentId}`
+                );
+
+                const data = await response.json();
+                document.getElementById('agentResult').textContent =
+                    JSON.stringify(data, null, 2);
+                addEventToLog('success', `Retrieved ${agentId} data`);
+            } catch (error) {
+                document.getElementById('agentResult').textContent =
+                    `Error: ${error.message}`;
+                addEventToLog('error', `Failed to get agent data: ${error.message}`);
+            }
+        }
+
+        // Helper functions
+        function updateStatus(type, message) {
+            const el = document.getElementById('connectionStatus');
+            el.className = `status ${type}`;
+            el.innerHTML = `<strong>Status:</strong> ${message}`;
+        }
+
+        function addEventToLog(type, message) {
+            const log = document.getElementById('eventLog');
+            const time = new Date().toLocaleTimeString();
+            const item = document.createElement('div');
+            item.className = 'event-item';
+            item.textContent = `[${time}] ${message}`;
+            log.insertBefore(item, log.firstChild);
+
+            // Keep only last 50 events
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Auto-test health on load
+        window.addEventListener('load', () => {
+            setTimeout(testHealth, 500);
+        });
+    </script>
+</body>
+</html>

@@ -11,6 +11,12 @@ from datetime import datetime
 import logging
 
 from app.services.venue_database import venue_db
+from app.services.keyword_expansions import (
+    get_all_theme_keywords,
+    get_all_event_keywords,
+    VENUE_KEYWORDS,
+    PARTY_ELEMENT_KEYWORDS
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,39 +54,31 @@ class DataExtractionAgent:
     """LangGraph-based data extraction agent"""
     
     def __init__(self):
-        self.event_types = [
-            'birthday', 'wedding', 'anniversary', 'baby shower', 'graduation', 
-            'retirement', 'holiday party', 'christmas', 'halloween', 'new year',
-            'easter', 'thanksgiving', 'valentine', 'mothers day', 'fathers day',
-            'engagement', 'bachelor', 'bachelorette', 'housewarming'
-        ]
-        
-        self.themes = [
-            'princess', 'superhero', 'unicorn', 'dinosaur', 'space', 'pirate',
-            'fairy', 'mermaid', 'jungle', 'safari', 'underwater', 'circus',
-            'carnival', 'vintage', 'rustic', 'modern', 'minimalist', 'bohemian',
-            'tropical', 'beach', 'pool', 'garden', 'tea party', 'masquerade',
-            'hollywood', 'disney', 'frozen', 'moana', 'cars', 'toy story', 'blippi'
-        ]
-        
-        self.activities = [
-            'balloon twisting', 'magic show', 'face painting', 'pinata', 'bouncy castle',
-            'photo booth', 'dancing', 'karaoke', 'treasure hunt', 'scavenger hunt',
-            'crafts', 'storytelling', 'music', 'dj', 'live band', 'entertainment',
-            'performers', 'dance floor'
-        ]
-        
+        # Use expanded keyword lists for better coverage
+        self.event_types = get_all_event_keywords()
+        self.themes = get_all_theme_keywords()
+
+        # Get activity/entertainment keywords
+        self.activities = PARTY_ELEMENT_KEYWORDS.get('entertainment', [])
+
+        # Food and catering keywords
         self.food_keywords = [
             'vegetarian', 'veg', 'non-vegetarian', 'non veg', 'mixed', 'catering',
             'cake', 'cupcakes', 'cookies', 'snacks', 'appetizers', 'finger foods',
-            'desserts', 'ice cream', 'pizza', 'hot dogs', 'hamburgers', 'sandwiches'
+            'desserts', 'ice cream', 'pizza', 'hot dogs', 'hamburgers', 'sandwiches',
+            'buffet', 'plated', 'family style', 'cocktail', 'hors d\'oeuvres'
         ]
-        
-        self.location_keywords = [
-            'home', 'house', 'backyard', 'garden', 'park', 'beach', 'pool', 'hall',
-            'restaurant', 'hotel', 'community center', 'church', 'school', 'playground',
-            'indoor', 'outdoor', 'venue', 'location', 'space'
-        ]
+
+        # Location keywords - combine all venue types
+        self.location_keywords = []
+        for venue_type, keywords in VENUE_KEYWORDS.items():
+            self.location_keywords.extend(keywords)
+
+        logger.info(
+            f"DataExtractionAgent initialized with expanded keywords: "
+            f"event_types={len(self.event_types)}, themes={len(self.themes)}, "
+            f"activities={len(self.activities)}, locations={len(self.location_keywords)}"
+        )
         
         self.build_graph()
     

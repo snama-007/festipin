@@ -56,6 +56,9 @@ class AddInputRequest(BaseModel):
     tags: List[str] = Field(default_factory=list, description="Optional tags")
     metadata: Optional[Dict[str, Any]] = None
 
+    # NEW: Support for image URLs (Pinterest, uploads, or direct URLs)
+    image_url: Optional[str] = Field(None, description="Image URL for vision analysis")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -139,14 +142,17 @@ async def create_party(request: CreatePartyRequest):
 @router.post("/party/{party_id}/input", response_model=AddInputResponse)
 async def add_input(party_id: str, request: AddInputRequest):
     """
-    Add input to existing party.
+    Add input to existing party - supports text, image, or BOTH.
 
     This triggers:
-    1. InputAnalyzer classifies the input
-    2. Appropriate agents are triggered
-    3. Real-time updates sent via WebSocket
+    1. UnifiedInputProcessor processes text and/or image
+    2. Vision AI analyzes images (if provided)
+    3. Smart Router chooses optimal extraction (regex or LLM)
+    4. InputAnalyzer classifies the combined input
+    5. Appropriate agents are triggered
+    6. Real-time updates sent via WebSocket
 
-    Example:
+    Example (Text only):
     ```
     POST /api/v1/event-driven/party/fp2025A12345/input
     {
@@ -155,22 +161,84 @@ async def add_input(party_id: str, request: AddInputRequest):
         "tags": ["cake"]
     }
     ```
+
+    Example (Image only):
+    ```
+    POST /api/v1/event-driven/party/fp2025A12345/input
+    {
+        "content": "pinterest_pin_123",
+        "source_type": "image",
+        "image_url": "https://pinterest.com/pin/123..."
+    }
+    ```
+
+    Example (Text + Image):
+    ```
+    POST /api/v1/event-driven/party/fp2025A12345/input
+    {
+        "content": "I want something like this for a 5-year-old",
+        "source_type": "text",
+        "image_url": "https://pinterest.com/pin/123...",
+        "tags": ["inspiration"]
+    }
+    ```
     """
     try:
+        from app.services.unified_input_processor import get_unified_processor
+
+        # Step 1: Process input with UnifiedInputProcessor
+        processor = get_unified_processor()
+
+        processed = await processor.process(
+            content=request.content,
+            source_type=request.source_type,
+            image_url=request.image_url,
+            tags=request.tags
+        )
+
+        logger.info(
+            "Input processed",
+            party_id=party_id,
+            processor_chain=processed.get("processor_chain"),
+            confidence=processed.get("confidence"),
+            has_vision=bool(processed.get("vision_data"))
+        )
+
+        # Step 2: Add to orchestrator with enriched data
         orchestrator = await get_orchestrator()
+
+        # Prepare enhanced metadata
+        enhanced_metadata = {
+            **(request.metadata or {}),
+            "image_url": request.image_url,
+            "vision_analysis": processed.get("vision_data").to_dict() if processed.get("vision_data") else None,
+            "processor_chain": processed.get("processor_chain"),
+            "extraction_confidence": processed.get("confidence"),
+            "agent_context": processed.get("agent_context")
+        }
 
         input_id = await orchestrator.add_input(
             party_id=party_id,
-            content=request.content,
+            content=processed.get("natural_language", request.content),
             source_type=request.source_type,
-            tags=request.tags,
-            metadata=request.metadata
+            tags=processed.get("tags", request.tags),
+            metadata=enhanced_metadata
         )
+
+        # Prepare response message
+        message_parts = ["Input added successfully"]
+        if processed.get("vision_data"):
+            theme = processed["vision_data"].theme
+            message_parts.append(f"with vision analysis (detected: {theme} theme)")
+
+        processor_info = " + ".join(processed.get("processor_chain", []))
+        if processor_info:
+            message_parts.append(f"[{processor_info}]")
 
         return AddInputResponse(
             success=True,
             input_id=input_id,
-            message="Input added successfully"
+            message=". ".join(message_parts)
         )
 
     except ValueError as e:
