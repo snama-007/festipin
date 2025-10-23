@@ -13,7 +13,8 @@ from typing import Dict, Any, Optional, Literal
 from dataclasses import dataclass
 
 from app.core.logging import logger
-from app.services.llm_planner import get_llm_planner, StructuredPlan
+from app.core.party_logger import log_party_event, get_party_logger
+from app.services.llm_planner import get_llm_planner, DetailedPartyPlan
 from app.services.data_extraction_agent import DataExtractionAgent
 from app.services.confidence_scorer import get_confidence_scorer
 from app.services.keyword_expansions import get_all_theme_keywords, get_all_event_keywords
@@ -114,15 +115,55 @@ class SmartInputRouter:
             Dict with extraction results and metadata
         """
 
-        # Step 1: Assess complexity
+        # Check if forced LLM routing is enabled
+        from app.core.config import settings
+
+        if settings.FORCE_LLM_ROUTING:
+            # Skip complexity assessment, always use LLM
+            logger.info(
+                "Forced LLM routing enabled",
+                has_vision=vision_confidence is not None,
+                input_preview=user_input[:100] if user_input else ""
+            )
+
+            log_party_event(
+                "Forced LLM routing enabled - skipping complexity assessment",
+                has_vision=vision_confidence is not None,
+                input_preview=user_input[:100] if user_input else ""
+            )
+
+            # Always use LLM
+            result = await self._process_with_llm(user_input, image_description, vision_confidence)
+
+            # Add routing metadata
+            result["routing"] = {
+                "forced_llm": True,
+                "processor": "llm",
+                "vision_confidence": vision_confidence
+            }
+
+            return result
+
+        # Step 1: Assess complexity (original behavior)
         complexity = self._assess_complexity(user_input, image_description)
 
+        # Log to console
         logger.info(
             "Input complexity assessed",
             complexity_level=complexity.level,
             use_llm=complexity.use_llm,
             reasons=complexity.reasons,
             has_vision=vision_confidence is not None
+        )
+
+        # Log to party-specific file
+        log_party_event(
+            "Input complexity assessed",
+            complexity_level=complexity.level,
+            use_llm=complexity.use_llm,
+            reasons=complexity.reasons,
+            has_vision=vision_confidence is not None,
+            input_preview=user_input[:100] if user_input else ""
         )
 
         # Step 2: Route to appropriate processor
@@ -252,6 +293,7 @@ class SmartInputRouter:
         """Process input with LLM planning"""
 
         logger.info("Processing with LLM planner", vision_confidence=vision_confidence)
+        log_party_event("Processing with LLM planner", vision_confidence=vision_confidence)
 
         # Generate structured plan
         plan = await self.llm_planner.generate_plan(user_input, image_description)
@@ -278,6 +320,7 @@ class SmartInputRouter:
         """Process input with fast regex extraction"""
 
         logger.info("Processing with regex extraction", vision_confidence=vision_confidence)
+        log_party_event("Processing with regex extraction", vision_confidence=vision_confidence)
 
         # Use existing DataExtractionAgent
         result = await self.regex_agent.extract_data(user_input, image_description)

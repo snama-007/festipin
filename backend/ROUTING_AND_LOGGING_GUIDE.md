@@ -4,10 +4,28 @@
 
 ---
 
+## ⚙️ Current Routing Mode
+
+**🚀 FORCED LLM MODE: ACTIVE**
+
+The system is currently configured to **skip complexity assessment** and route **ALL inputs to Gemini LLM** for maximum quality.
+
+- Configuration: `FORCE_LLM_ROUTING = True` in `app/core/config.py`
+- See `FORCED_LLM_MODE.md` for complete documentation
+- To restore hybrid routing: Set `FORCE_LLM_ROUTING = False`
+
+---
+
 ## 📊 Overview: How Input is Processed
 
-When the frontend sends input (text/image), the backend uses a **HYBRID APPROACH** that automatically chooses between:
+When the frontend sends input (text/image), the backend can use two approaches:
 
+### **Current Mode: Forced LLM (Active)**
+- ✅ **ALL inputs** → Gemini LLM (100% of cases) - Paid, highest quality
+- ⏭️ Complexity assessment **skipped**
+
+### **Alternative Mode: Hybrid (Disabled)**
+When hybrid mode is enabled (`FORCE_LLM_ROUTING = False`):
 1. **Fast Regex Extraction** (70% of cases) - Free, instant
 2. **LLM Planning** (30% of cases) - Paid, intelligent
 

@@ -11,6 +11,7 @@ from datetime import datetime
 
 from app.services.event_driven_orchestrator import get_orchestrator
 from app.core.logging import logger
+from app.core.party_logger import set_active_party, clear_active_party, log_party_event, get_party_logger
 
 
 router = APIRouter(prefix="/event-driven", tags=["Event-Driven Agents"])
@@ -125,6 +126,16 @@ async def create_party(request: CreatePartyRequest):
             user_id=request.user_id
         )
 
+        # Set active party context for logging
+        set_active_party(party_id)
+
+        # Log party creation to party-specific log file
+        log_party_event(
+            "Party session created",
+            user_id=request.user_id,
+            initial_inputs_count=len(request.initial_inputs) if request.initial_inputs else 0
+        )
+
         return CreatePartyResponse(
             success=True,
             party_id=party_id,
@@ -184,6 +195,9 @@ async def add_input(party_id: str, request: AddInputRequest):
     ```
     """
     try:
+        # Set active party context for logging
+        set_active_party(party_id)
+
         from app.services.unified_input_processor import get_unified_processor
 
         # Step 1: Process input with UnifiedInputProcessor
@@ -378,6 +392,99 @@ async def health_check():
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
         }
+
+
+@router.get("/party/{party_id}/logs")
+async def get_party_logs(party_id: str):
+    """
+    Get all logs for a specific party session.
+
+    Returns all party-specific logs from the log file.
+    Logs include:
+    - Party creation
+    - Input processing decisions (regex vs LLM)
+    - Agent executions
+    - Plan updates
+    - Budget calculations
+
+    Example:
+    ```
+    GET /api/v1/event-driven/party/fp-2025A12345/logs
+    ```
+
+    Response:
+    ```json
+    {
+        "party_id": "fp-2025A12345",
+        "log_file": "logs/party_fp-2025A12345.log",
+        "total_logs": 45,
+        "logs": [
+            {
+                "timestamp": "2025-10-22T...",
+                "level": "INFO",
+                "party_id": "fp-2025A12345",
+                "message": "Party session created",
+                "user_id": "user123"
+            },
+            ...
+        ]
+    }
+    ```
+    """
+    try:
+        party_logger = get_party_logger()
+
+        # Ensure party_id starts with fp-
+        if not party_id.startswith("fp-"):
+            party_id = f"fp-{party_id}"
+
+        # Get logs for this party
+        logs = party_logger.get_party_logs(party_id)
+
+        # Get log file path
+        log_file = party_logger._get_log_file_path(party_id)
+
+        return {
+            "success": True,
+            "party_id": party_id,
+            "log_file": str(log_file),
+            "total_logs": len(logs),
+            "logs": logs
+        }
+
+    except Exception as e:
+        logger.error("Failed to get party logs", party_id=party_id, error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve logs: {str(e)}")
+
+
+@router.delete("/party/{party_id}/logs")
+async def clear_party_logs(party_id: str):
+    """
+    Clear all logs for a specific party session.
+
+    Example:
+    ```
+    DELETE /api/v1/event-driven/party/fp-2025A12345/logs
+    ```
+    """
+    try:
+        party_logger = get_party_logger()
+
+        # Ensure party_id starts with fp-
+        if not party_id.startswith("fp-"):
+            party_id = f"fp-{party_id}"
+
+        # Clear logs
+        party_logger.clear_party_logs(party_id)
+
+        return {
+            "success": True,
+            "message": f"Logs cleared for party {party_id}"
+        }
+
+    except Exception as e:
+        logger.error("Failed to clear party logs", party_id=party_id, error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to clear logs: {str(e)}")
 
 
 @router.websocket("/ws/{party_id}")

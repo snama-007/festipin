@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = "your_gemini_api_key_here"
     OPENAI_MODEL: str = "gemini-2.0-flash"  # Using Gemini Flash for vision analysis
     GEMINI_MODEL: str = "gemini-2.0-flash"
+
+    # Routing Strategy
+    FORCE_LLM_ROUTING: bool = True  # If True, skip complexity assessment and always use LLM (higher quality, higher cost)
     
     # Runware AI Configuration
     RUNWARE_API_KEY: str = "your_runware_api_key_here"

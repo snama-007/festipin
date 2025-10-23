@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -11,6 +11,7 @@ import type { OrchestrationInput } from '@/services/api'
 import { extractEventData, validatePartyContent, ExtractedEventData, ExtractionResponse, ValidationResponse } from '@/services/api'
 import { DataInputForm } from '@/components/DataInputForm'
 import { ConversationalDialog } from '@/components/ConversationalDialog'
+import { PartySummary } from '@/components/PartySummary'
 import { generatePartyId } from '@/lib/partyId'
 
 const partyTags = [
@@ -93,6 +94,8 @@ export default function PartyPlanOS() {
   // Form state
   const [pinterestUrl, setPinterestUrl] = useState('')
   const [chatMessage, setChatMessage] = useState('Create a magical unicorn-themed birthday party for a 5-year-old with rainbow decorations, unicorn cake, and pony rides')
+  const [showPromptSamples, setShowPromptSamples] = useState(false)
+  const [copiedPromptKey, setCopiedPromptKey] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   
   // Location state
@@ -108,6 +111,67 @@ export default function PartyPlanOS() {
   const [analysisResult, setAnalysisResult] = useState<VisionAnalysisResponse | null>(null)
   const [generatedPlan, setGeneratedPlan] = useState<any | null>(null)
   const [hoveredChip, setHoveredChip] = useState<string | null>(null)
+  const promptSamples = useMemo(() => [
+    { key: 'kids_princess_party', label: 'Kids · Princess Adventure', text: 'Plan a whimsical princess themed birthday party for a 6-year-old named Lily with pastel decorations, a tiara crafting station, and a storytelling corner.' },
+    { key: 'teen_glow_party', label: 'Teens · Neon Glow', text: 'Create a neon glow-in-the-dark dance party for teens with UV-reactive decor, a DJ playlist, and mocktail bar ideas.' },
+    { key: 'adult_cocktail_soiree', label: 'Adults · Cocktail Evening', text: 'Design an elegant cocktail soirée for 30 guests celebrating a promotion, featuring signature drinks, chic lounge decor, and upscale appetizers.' },
+    { key: 'garden_bridal_shower', label: 'Bridal · Garden Brunch', text: 'Compose a floral garden bridal shower with brunch menu suggestions, flower crown workshop, and soft acoustic music vibes.' },
+    { key: 'baby_shower_storybook', label: 'Baby Shower · Storybook', text: 'Build a storybook themed baby shower with literary-inspired decorations, dessert table styling, and keepsake guest activities.' },
+    { key: 'milestone_anniversary', label: 'Anniversary · Milestone', text: 'Organize a 25th anniversary celebration with silver-inspired decor, memory lane photo moments, and live string quartet recommendations.' },
+    { key: 'corporate_team_building', label: 'Corporate · Team Building', text: 'Draft a creative corporate team-building retreat with collaborative workshops, outdoor challenges, and healthy catering options.' },
+    { key: 'holiday_winter_gala', label: 'Holiday · Winter Gala', text: 'Imagine a winter wonderland holiday gala with crystal decor, gourmet buffet, live entertainment, and charity auction flow.' },
+    { key: 'graduation_block_party', label: 'Graduation · Block Party', text: 'Plan a high-energy graduation block party with bold school colors, photo backdrop ideas, and food truck lineup suggestions.' },
+    { key: 'cultural_fusion_wedding', label: 'Wedding · Cultural Fusion', text: 'Blend Indian and Western wedding traditions for a vibrant celebration featuring fusion cuisine, décor palette, and music timeline.' },
+    { key: 'intimate_microwedding', label: 'Wedding · Micro Celebration', text: 'Curate an intimate micro wedding for 25 guests in a modern loft with minimalist floral accents and coursed dinner service.' },
+    { key: 'outdoor_movie_night', label: 'Community · Movie Night', text: 'Set up an outdoor neighborhood movie night with projector layout, cozy seating pods, themed snacks, and lighting plan.' },
+    { key: 'charity_fundraiser_gala', label: 'Nonprofit · Fundraiser', text: 'Map out a black-tie charity fundraiser gala highlighting donor experiences, silent auction strategy, and keynote schedule.' },
+    { key: 'sports_championship_party', label: 'Sports · Championship', text: 'Create a championship viewing party with immersive fan zones, themed food stations, and interactive prediction games.' },
+    { key: 'retirement_travel_theme', label: 'Retirement · Travel Dreams', text: 'Celebrate a retirement with a travel dreams theme featuring destination-inspired decor, interactive guest map, and playlist.' },
+    { key: 'festival_style_engagement', label: 'Engagement · Festival', text: 'Design a festival-style engagement party with colorful tents, live acoustic sets, grazing tables, and photo moments.' },
+    { key: 'luxury_sweet_sixteen', label: 'Sweet 16 · Luxe', text: 'Craft a luxury sweet sixteen with modern glam decor, VIP lounge areas, choreographed entrance, and dessert showcase.' },
+    { key: 'eco_friendly_event', label: 'Eco · Sustainable', text: 'Develop an eco-friendly celebration plan using sustainable materials, plant-based menu ideas, and zero-waste strategies.' },
+    { key: 'masquerade_birthday', label: 'Adult · Masquerade', text: 'Outline a masquerade birthday ball with dramatic lighting, couture mask station, and midnight reveal moment.' },
+    { key: 'harry_potter_party', label: 'Fandom · Wizarding World', text: 'Prepare a Harry Potter inspired party including house sorting activities, themed dessert bar, and immersive decor zones.' },
+    { key: 'space_camp_kids', label: 'Kids · Space Camp', text: 'Design a space camp birthday with DIY rocket crafts, galaxy snacks, astronaut training games, and cosmic decorations.' },
+    { key: 'boho_baby_shower', label: 'Baby Shower · Boho', text: 'Assemble a boho chic baby shower with rattan accents, dried florals, charcuterie brunch boards, and guest keepsake ideas.' },
+    { key: '90s_throwback_party', label: 'Adults · 90s Throwback', text: 'Plan a 90s throwback party with playlist curation, retro arcade corner, themed cocktails, and costume contest flow.' },
+    { key: 'lux_beach_proposal', label: 'Proposal · Beach Luxe', text: 'Craft a luxury beach proposal setup with sunset picnic styling, live musician, and surprise celebration plan afterwards.' },
+    { key: 'art_gallery_launch', label: 'Launch · Art Gallery', text: 'Coordinate an art gallery opening night with curated lighting, artist Q&A lounge, champagne reception, and press kit ideas.' },
+    { key: 'multiday_family_reunion', label: 'Family · Reunion', text: 'Develop a three-day family reunion itinerary with welcome dinner, outdoor adventure, nostalgic slideshow, and farewell brunch.' },
+    { key: 'pet_birthday_bash', label: 'Pets · Birthday', text: 'Organize a pet-friendly birthday bash with themed treats, agility play zone, costume parade, and paw-print favors.' },
+    { key: 'culinary_tasting_event', label: 'Foodies · Tasting', text: 'Arrange an elevated culinary tasting evening featuring chef stations, wine pairings, and interactive palate passports.' },
+    { key: 'wellness_retreat', label: 'Wellness · Retreat', text: 'Produce a holistic wellness retreat weekend with sunrise yoga, plant-based meals, sound bath sessions, and journaling nooks.' },
+    { key: 'college_orientation', label: 'Campus · Orientation', text: 'Blueprint a college orientation day with welcome rally, resource fair layout, themed icebreakers, and after-party celebration.' }
+  ], [])
+
+  const handleCopyPrompt = useCallback(async (promptKey: string, promptText: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(promptText)
+      } else if (typeof document !== 'undefined') {
+        const temp = document.createElement('textarea')
+        temp.value = promptText
+        temp.style.position = 'fixed'
+        temp.style.opacity = '0'
+        document.body.appendChild(temp)
+        temp.focus()
+        temp.select()
+        document.execCommand('copy')
+        document.body.removeChild(temp)
+      }
+      setChatMessage(promptText)
+      setCopiedPromptKey(promptKey)
+      setShowPromptSamples(false)
+      setTimeout(() => setCopiedPromptKey(null), 2000)
+      setTimeout(() => {
+        if (promptTextareaRef.current) {
+          promptTextareaRef.current.focus()
+        }
+      }, 120)
+    } catch (error) {
+      console.error('Failed to copy prompt:', error)
+    }
+  }, [])
   
   // Agent orchestration
   const {
@@ -126,6 +190,8 @@ export default function PartyPlanOS() {
   const [chatInput, setChatInput] = useState('')
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [showPartySummary, setShowPartySummary] = useState(false)
+  const [showCommunicationHub, setShowCommunicationHub] = useState(false)
   
   
   // Voice input state
@@ -1782,6 +1848,22 @@ export default function PartyPlanOS() {
                         disabled={loading}
                       />
                       
+                      {/* Sample Prompts Button */}
+                      <motion.button
+                        type="button"
+                        onClick={() => setShowPromptSamples(true)}
+                        className="absolute left-3 top-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-100/80 to-pink-100/80 text-purple-700 border border-purple-200/60 shadow-sm backdrop-blur-md hover:from-purple-200/80 hover:to-pink-200/80 transition-all duration-200"
+                        whileHover={{ scale: 1.04, y: -1 }}
+                        whileTap={{ scale: 0.95 }}
+                        title="Browse sample prompts"
+                        disabled={loading}
+                      >
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/80 text-xs shadow-sm">
+                          ✨
+                        </span>
+                        <span className="text-xs font-semibold tracking-wide whitespace-nowrap">Sample Prompts</span>
+                      </motion.button>
+                      
                       {/* Clear Button */}
                       {chatMessage && (
                         <motion.button
@@ -2179,8 +2261,108 @@ export default function PartyPlanOS() {
                     }}
                   />
                 ))}
-          </div>
+              </div>
 
+              {/* Build Mode Content */}
+              <div className="relative z-10 flex-1 flex flex-col">
+                {!showPartySummary && !showCommunicationHub ? (
+                  // Agent Orchestration View
+                  <div className="flex-1 flex flex-col items-center justify-center p-8">
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center max-w-2xl"
+                    >
+                      <div className="text-6xl mb-6">🎉</div>
+                      <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                        Your Party Plan is Ready!
+                      </h2>
+                      <p className="text-lg text-gray-600 mb-8">
+                        Our AI agents have analyzed your requirements and created a comprehensive party plan. 
+                        Click below to see the complete details.
+                      </p>
+                      
+                      {/* Show Final Plan Button */}
+                      <motion.button
+                        onClick={() => setShowPartySummary(true)}
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        🎊 View Complete Party Plan
+                      </motion.button>
+
+                      {/* Agent Status Display */}
+                      {workflowStatus && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 }}
+                          className="mt-8 p-6 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50"
+                        >
+                          <h3 className="text-lg font-semibold text-gray-800 mb-4">Agent Status</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {Object.entries(workflowStatus.agent_results || {}).map(([agentName, status]: [string, any]) => (
+                              <div key={agentName} className="text-center">
+                                <div className="text-2xl mb-2">
+                                  {status.status === 'completed' ? '✅' : 
+                                   status.status === 'running' ? '⏳' : 
+                                   status.status === 'error' ? '❌' : '⏸️'}
+                                </div>
+                                <div className="text-sm font-medium text-gray-700 capitalize">
+                                  {agentName.replace('_', ' ')}
+                                </div>
+                                <div className={`text-xs ${
+                                  status.status === 'completed' ? 'text-green-600' :
+                                  status.status === 'running' ? 'text-blue-600' :
+                                  status.status === 'error' ? 'text-red-600' : 'text-gray-500'
+                                }`}>
+                                  {status.status}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  </div>
+                ) : showPartySummary ? (
+                  // Party Summary View
+                  <PartySummary 
+                    partyId={currentEventId || 'demo-party'} 
+                    onNext={() => {
+                      setShowPartySummary(false)
+                      setShowCommunicationHub(true)
+                    }}
+                  />
+                ) : (
+                  // Communication Hub View (placeholder)
+                  <div className="flex-1 flex items-center justify-center">
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center"
+                    >
+                      <div className="text-6xl mb-6">💬</div>
+                      <h2 className="text-3xl font-bold text-gray-800 mb-4">
+                        Communication Hub
+                      </h2>
+                      <p className="text-lg text-gray-600 mb-8">
+                        Coming soon! This is where you'll communicate with vendors.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setShowCommunicationHub(false)
+                          setShowPartySummary(true)
+                        }}
+                        className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        ← Back to Party Summary
+                      </button>
+                    </motion.div>
+                  </div>
+                )}
+              </div>
 
               {/* Festimo Logo - Bottom Right */}
               <motion.div
@@ -2200,6 +2382,137 @@ export default function PartyPlanOS() {
         </motion.div>
       )}
     </AnimatePresence>
+
+      <AnimatePresence>
+        {showPromptSamples && (
+          <motion.div
+            className="fixed inset-0 z-[120] flex items-center justify-center px-4 py-6 bg-black/40 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowPromptSamples(false)}
+          >
+            <motion.div
+              className="relative max-w-5xl w-full max-h-[80vh] overflow-hidden rounded-3xl bg-gradient-to-br from-white via-pink-50/90 to-purple-50/90 shadow-2xl border border-white/60"
+              initial={{ scale: 0.92, opacity: 0, y: 40 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 40 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="relative z-10 p-6 sm:p-8 overflow-y-auto max-h-[80vh]">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2.5">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg text-lg">✨</span>
+                      Imagination Boosters
+                    </h3>
+                    <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">Explore ready-to-use prompts from simple party requests to complex multi-day experiences.</p>
+                  </div>
+                  <motion.button
+                    onClick={() => setShowPromptSamples(false)}
+                    className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-colors"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <span>Close</span>
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </motion.button>
+                </div>
+
+                <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {promptSamples.map((sample, index) => (
+                    <motion.div
+                      key={sample.key}
+                      className="group relative p-4 rounded-xl bg-white/80 border border-white/70 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer backdrop-blur-sm flex flex-col gap-3"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.02 * index }}
+                      whileHover={{ y: -3 }}
+                      onClick={() => setChatMessage(sample.text)}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-purple-500 font-semibold">{sample.label}</p>
+                          <p className="mt-1 text-gray-800 text-xs leading-relaxed">{sample.text}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                        <span className="text-[11px] text-gray-400">Tap card to preview</span>
+                        <motion.button
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleCopyPrompt(sample.key, sample.text)
+                          }}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                            copiedPromptKey === sample.key
+                              ? 'bg-green-100 text-green-700 border border-green-300'
+                              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md hover:shadow-lg'
+                          }`}
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {copiedPromptKey === sample.key ? (
+                            <>
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                              </svg>
+                              Copy & Use
+                            </>
+                          )}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+                <div className="absolute -top-16 -right-10 w-56 h-56 bg-purple-200/40 rounded-full blur-2xl" />
+                <div className="absolute -bottom-20 -left-14 w-72 h-72 bg-pink-200/40 rounded-full blur-2xl" />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

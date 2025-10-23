@@ -359,3 +359,110 @@ export async function listActiveEvents(): Promise<{ success: boolean; events: an
 
   return response.json()
 }
+
+// ===== PARTY SUMMARY API =====
+
+export interface PartySummaryData {
+  party_id: string
+  status: string
+  completion_percent: number
+  budget: {
+    total_min: number
+    total_max: number
+    breakdown: Array<{
+      category: string
+      amount: number
+      percentage: number
+    }>
+  }
+  agent_results: {
+    theme_agent?: {
+      status: string
+      result: {
+        primary_theme: string
+        color_scheme: string[]
+        decorations: string[]
+        mood: string
+      }
+    }
+    venue_agent?: {
+      status: string
+      result: {
+        recommended_venues: Array<{
+          name: string
+          location: string
+          capacity: number
+          price_range: string
+          features: string[]
+        }>
+      }
+    }
+    cake_agent?: {
+      status: string
+      result: {
+        cake_suggestions: Array<{
+          type: string
+          flavor: string
+          size: string
+          price_range: string
+          bakery: string
+        }>
+      }
+    }
+    catering_agent?: {
+      status: string
+      result: {
+        menu_suggestions: Array<{
+          category: string
+          items: string[]
+          dietary_options: string[]
+        }>
+      }
+    }
+    vendor_agent?: {
+      status: string
+      result: {
+        vendor_suggestions: Array<{
+          type: string
+          name: string
+          services: string[]
+          price_range: string
+          contact_info: string
+        }>
+      }
+    }
+  }
+  recommendations: string[]
+  next_steps: string[]
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Get party status and final plan data
+ */
+export async function getPartyStatus(partyId: string): Promise<PartySummaryData> {
+  const response = await fetch(`${API_URL}/api/v1/event-driven/party/${partyId}/status`)
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to get party status')
+  }
+
+  const data = await response.json()
+  return data.party
+}
+
+/**
+ * Get final plan data for a party
+ */
+export async function getFinalPlan(partyId: string): Promise<any> {
+  const response = await fetch(`${API_URL}/api/v1/event-driven/party/${partyId}/final-plan`)
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to get final plan')
+  }
+
+  return response.json()
+}

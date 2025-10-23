@@ -1,0 +1,83 @@
+{
+    "PartyName": "Whimsical Princess Birthday (Lily, 6)",
+    "ThemeData": {
+      "Theme": "Whimsical Princess Palace",
+      "Vibe": "Enchanting, Pastel, and Playful",
+      "ColorPalette": {
+        "PrimaryColors": ["Pastel Pink", "Lavender", "Mint Green"],
+        "AccentColor": "Gold"
+      },
+      "KeyInspiration": "Classic storybook princesses and light fantasy"
+    },
+    "Logistics": {
+      "DateAndTime": "Monday, November 10, 2025, 10:00 AM - 12:00 PM (2 hours total)",
+      "Venue": {
+        "Type": "Home (Private Residence)",
+        "Location": "San Jose",
+        "SetupFocus": "Clearing main living/dining area for activities and setting up food stations near the kitchen."
+      },
+      "GuestCount": {"Kids": 15, "Adults": 20, "Total": 35},
+      "BudgetStatus": "$1000 Total (High DIY dependency for decor and food)"
+    },
+    "DecorData": {
+      "OverallStyle": "Soft and Glimmering (Cost-Effective)",
+      "KeyElements": [
+        {"Item": "Tulle Draping", "Detail": "Pastel shades swags (flame-retardant) in the main party room. Secured via low-impact hooks/tape."},
+        {"Item": "Balloons", "Detail": "DIY Balloon Arch Kit (pastel shades) over the main photo/cake area. Inflation scheduled for 9:00 AM."},
+        {"Item": "PhotoOp", "Detail": "Dedicated wall area using the balloon arch and an ornate, budget-friendly framed photo area."},
+        {"Item": "TableDecor", "Detail": "Disposable pastel/gold paper goods; spray-painted (gold) branches in simple vases as budget centerpieces."}
+      ],
+      "ExecutionPlan": "Team of 2 adults for setup starting at 8:00 AM."
+    },
+    "ActivitiesPlan": {
+      "RunSheet": [
+        {"Time": "10:00 AM - 10:30 AM", "Event": "Guest Arrival, Open Play & Food Station Opens (30 min)"},
+        {"Time": "10:30 AM - 11:15 AM", "Event": "Tiara Crafting Station (45 min) - *Adult Supervision Ratio: 1:6*"},
+        {"Time": "11:15 AM - 11:45 AM", "Event": "Cake, Happy Birthday Song & Storytelling Corner (30 min)"},
+        {"Time": "11:45 AM - 12:00 PM", "Event": "Favor Distribution & Farewell (Clean-up begins at 12:00 PM)"}
+      ],
+      "Activity1": {
+        "Name": "Tiara Crafting Station",
+        "SuppliesDetail": "Budgeted for 18 kits ($4 per kit total); Focus on non-choking hazard parts.",
+        "Setup": "Designated, covered table with materials laid out for easy assembly."
+      },
+      "Activity2": {
+        "Name": "Royal Storytelling Corner",
+        "Setup": "Low-traffic area with soft seating (cushions) and calming string lights.",
+        "Personnel": "Designated 'Royal Storyteller' prepared with 3 short (5-7 minute) stories."
+      }
+    },
+    "food": {
+      "Style": "Princess Tea Party (Brunch/Early Lunch Focus - Budget Conscious)",
+      "main": {
+        "Items": [
+          {"Item": "Sandwiches", "Detail": "Star-cut PB&J/Ham/Cheese (DIY prep for budget saving)."},
+          {"Item": "SavorySnacks", "Detail": "Fruit skewers (safe items only), mini muffins/bagels for brunch element."},
+          {"Item": "AdultSavories", "Detail": "Simple cheese/cracker plate to supplement main snacks."}
+        ],
+        "Focus": "High volume, low cost, safe foods for kids."
+      },
+      "dessert": {
+        "Items": [
+          {"Item": "FocusCake", "Detail": "Small custom cake (Budget Priority) for aesthetic/cutting ceremony."},
+          {"Item": "Supplement", "Detail": "Bulk store-bought cupcakes/cookies to cover the remaining 30+ servings (Budget saving technique)."}
+        ],
+        "ServingMethod": "Buffet style setup on a dedicated, decorated table."
+      },
+      "extras": {
+        "Beverage": "Pink 'Magic Potion' punch; Dedicated Coffee/Tea station for adults (Self-service).",
+        "StorageCheck": "Ensure sufficient refrigerator/cooler space is available for all perishables."
+      }
+    },
+    "FavorsAndKeepsakes": {
+      "Favors": "Royal Keepsakes",
+      "Items": ["Personalized wands", "Small bottle of glitter (non-toxic)", "Princess sticker sheet"],
+      "Presentation": "Pre-assembled bags placed near the exit."
+    },
+    "MissingData": {
+      "RequiredPlanning": {
+        "CateringType": "Catering Details (e.g., DIY snacks only, Hired Caterer, Pizza + Cake) - **CRITICAL FOR FINAL BUDGET & PREP**",
+        "AllergenList": "Complete List of Known Food Allergies (Safety critical step) - **CRITICAL FOR FOOD SAFETY**"
+      }
+    }
+  }
