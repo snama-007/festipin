@@ -12,6 +12,7 @@ import { extractEventData, validatePartyContent, ExtractedEventData, ExtractionR
 import { DataInputForm } from '@/components/DataInputForm'
 import { ConversationalDialog } from '@/components/ConversationalDialog'
 import { PartySummary } from '@/components/PartySummary'
+import { CommunicationHub } from '@/communication/components/CommunicationHub'
 import { generatePartyId } from '@/lib/partyId'
 
 const partyTags = [
@@ -2219,6 +2220,29 @@ export default function PartyPlanOS() {
                 )}
               </motion.div>
             )}
+
+            {/* Test Communication Hub Button */}
+            <motion.div
+              className="mt-6 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <motion.button
+                onClick={() => {
+                  setMode('build')
+                  setShowPartySummary(true)
+                }}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                🧪 Test Communication Hub
+              </motion.button>
+              <p className="text-xs text-gray-500 mt-2">
+                Skip the workflow and test the communication system directly
+              </p>
+            </motion.div>
             </div>
           </motion.div>
           </motion.div>
@@ -2336,31 +2360,34 @@ export default function PartyPlanOS() {
                     }}
                   />
                 ) : (
-                  // Communication Hub View (placeholder)
-                  <div className="flex-1 flex items-center justify-center">
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="text-center"
-                    >
-                      <div className="text-6xl mb-6">💬</div>
-                      <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                        Communication Hub
-                      </h2>
-                      <p className="text-lg text-gray-600 mb-8">
-                        Coming soon! This is where you'll communicate with vendors.
-                      </p>
-                      <button
-                        onClick={() => {
-                          setShowCommunicationHub(false)
-                          setShowPartySummary(true)
-                        }}
-                        className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        ← Back to Party Summary
-                      </button>
-                    </motion.div>
-                  </div>
+                  // Communication Hub View
+                  <CommunicationHub 
+                    partyId={currentEventId || 'demo-party'}
+                    vendorRecommendations={[
+                      {
+                        type: "Balloon Artist",
+                        why_needed: "Create magical balloon decorations",
+                        budget_range: [200, 400],
+                        suggested_vendors: ["Sarah's Balloons", "Magic Balloons Co."]
+                      },
+                      {
+                        type: "Caterer",
+                        why_needed: "Provide delicious party food",
+                        budget_range: [500, 800],
+                        suggested_vendors: ["Gourmet Catering", "Party Food Express"]
+                      },
+                      {
+                        type: "Photographer",
+                        why_needed: "Capture magical moments",
+                        budget_range: [300, 600],
+                        suggested_vendors: ["Photo Magic", "Memory Makers"]
+                      }
+                    ]}
+                    onBack={() => {
+                      setShowCommunicationHub(false)
+                      setShowPartySummary(true)
+                    }}
+                  />
                 )}
               </div>
 
