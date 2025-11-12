@@ -15,14 +15,6 @@ import { PartySummary } from '@/components/PartySummary'
 import { CommunicationHub } from '@/communication/components/CommunicationHub'
 import { generatePartyId } from '@/lib/partyId'
 
-const partyTags = [
-  "🎉 BalloonVendor",
-  "🍰 CakeArtist",
-  "📸 PhotoBooth",
-  "🪩 DJ",
-  "👗 DressThemes"
-]
-
 const floatingImages = [
   { src: "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=400&h=400&fit=crop", top: "15%", left: "8%" },
   { src: "https://images.unsplash.com/photo-1464047736614-af63643285bf?w=400&h=400&fit=crop", top: "20%", right: "10%" },
@@ -31,6 +23,32 @@ const floatingImages = [
   { src: "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=400&h=400&fit=crop", top: "50%", left: "5%" },
   { src: "https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=400&h=400&fit=crop", top: "55%", right: "5%" }
 ]
+
+
+const createClassicFormState = () => ({
+  eventType: '',
+  occasionName: '',
+  honoree: '',
+  location: '',
+  date: '',
+  time: '',
+  guestAdults: '',
+  guestKids: '',
+  budget: '',
+  theme: '',
+  notes: ''
+})
+
+const formatBudgetValue = (raw: string): string => {
+  if (!raw) return ''
+  const stripped = raw.replace(/[^0-9.]/g, '')
+  const numeric = Number(stripped)
+  if (!Number.isNaN(numeric) && stripped.trim() !== '') {
+    const formatted = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(numeric)
+    return `$${formatted}`
+  }
+  return raw.trim().startsWith('$') ? raw.trim() : `$${raw.trim()}`
+}
 
 // Agent log types for color coding
 type LogType = 'user_input' | 'agent_info' | 'agent_success' | 'agent_warning' | 'agent_error' | 'system_info'
@@ -95,9 +113,11 @@ export default function PartyPlanOS() {
   // Form state
   const [pinterestUrl, setPinterestUrl] = useState('')
   const [chatMessage, setChatMessage] = useState('Create a magical unicorn-themed birthday party for a 5-year-old with rainbow decorations, unicorn cake, and pony rides')
+  const [classicForm, setClassicForm] = useState(createClassicFormState)
   const [showPromptSamples, setShowPromptSamples] = useState(false)
   const [copiedPromptKey, setCopiedPromptKey] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isClassicFormOpen, setIsClassicFormOpen] = useState(false)
   
   // Location state
   const [location, setLocation] = useState('')
@@ -111,7 +131,6 @@ export default function PartyPlanOS() {
   const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [analysisResult, setAnalysisResult] = useState<VisionAnalysisResponse | null>(null)
   const [generatedPlan, setGeneratedPlan] = useState<any | null>(null)
-  const [hoveredChip, setHoveredChip] = useState<string | null>(null)
   const promptSamples = useMemo(() => [
     { key: 'kids_princess_party', label: 'Kids · Princess Adventure', text: 'Plan a whimsical princess themed birthday party for a 6-year-old named Lily with pastel decorations, a tiara crafting station, and a storytelling corner.' },
     { key: 'teen_glow_party', label: 'Teens · Neon Glow', text: 'Create a neon glow-in-the-dark dance party for teens with UV-reactive decor, a DJ playlist, and mocktail bar ideas.' },
@@ -144,6 +163,24 @@ export default function PartyPlanOS() {
     { key: 'wellness_retreat', label: 'Wellness · Retreat', text: 'Produce a holistic wellness retreat weekend with sunrise yoga, plant-based meals, sound bath sessions, and journaling nooks.' },
     { key: 'college_orientation', label: 'Campus · Orientation', text: 'Blueprint a college orientation day with welcome rally, resource fair layout, themed icebreakers, and after-party celebration.' }
   ], [])
+  const eventTypeOptions = useMemo(
+    () => [
+      'Birthday Party',
+      'Wedding',
+      'Engagement Party',
+      'Baby Shower',
+      'Bridal Shower',
+      'Graduation',
+      'Corporate Event',
+      'Holiday Party',
+      'Anniversary Celebration',
+      'Fundraiser / Gala',
+      'Family Reunion',
+      'Theme Party',
+      'Other'
+    ],
+    []
+  )
 
   const handleCopyPrompt = useCallback(async (promptKey: string, promptText: string) => {
     try {
@@ -173,6 +210,83 @@ export default function PartyPlanOS() {
       console.error('Failed to copy prompt:', error)
     }
   }, [])
+  const handleClassicFormChange = useCallback(
+    (field: keyof typeof classicForm, value: string) => {
+      const nextValue = field === 'budget' ? formatBudgetValue(value) : value
+      setClassicForm((prev) => ({ ...prev, [field]: nextValue }))
+    },
+    []
+  )
+
+  const buildClassicPrompt = useCallback(() => {
+    const segments: string[] = []
+    if (classicForm.eventType || classicForm.theme) {
+      segments.push(
+        `Plan a ${classicForm.theme ? `${classicForm.theme.toLowerCase()} themed ` : ''}${classicForm.eventType || 'party'}`
+      )
+    }
+    if (classicForm.occasionName) {
+      segments.push(`called "${classicForm.occasionName.trim()}"`)
+    }
+    if (classicForm.honoree) {
+      segments.push(`honoring ${classicForm.honoree}`)
+    }
+    const detailParts: string[] = []
+    if (classicForm.location) detailParts.push(`Location: ${classicForm.location}`)
+    if (classicForm.date) detailParts.push(`Date: ${classicForm.date}`)
+    if (classicForm.time) detailParts.push(`Time: ${classicForm.time}`)
+    if (classicForm.guestAdults || classicForm.guestKids) {
+      const guestParts: string[] = []
+      if (classicForm.guestAdults) {
+        const count = Number(classicForm.guestAdults)
+        const adultLabel = Number.isNaN(count) ? classicForm.guestAdults : `${count} adult${count === 1 ? '' : 's'}`
+        guestParts.push(adultLabel)
+      }
+      if (classicForm.guestKids) {
+        const count = Number(classicForm.guestKids)
+        const kidLabel = Number.isNaN(count) ? classicForm.guestKids : `${count} kid${count === 1 ? '' : 's'}`
+        guestParts.push(kidLabel)
+      }
+      detailParts.push(`Guests: ${guestParts.join(', ')}`)
+    }
+    if (classicForm.budget) detailParts.push(`Budget: ${formatBudgetValue(classicForm.budget)}`)
+    if (classicForm.notes) detailParts.push(`Notes: ${classicForm.notes}`)
+
+    const promptBody = [segments.join(' '), detailParts.join(' | ')].filter(Boolean).join('. ')
+    return promptBody || 'Create a detailed party plan.'
+  }, [classicForm])
+
+  const applyClassicFormToPrompt = useCallback(() => {
+    const builtPrompt = buildClassicPrompt()
+    setChatMessage(builtPrompt)
+    setIsClassicFormOpen(false)
+    setTimeout(() => {
+      if (promptTextareaRef.current) {
+        promptTextareaRef.current.focus()
+      }
+    }, 60)
+  }, [buildClassicPrompt])
+  const classicPromptPreview = useMemo(() => buildClassicPrompt(), [buildClassicPrompt])
+  const isClassicActive = isClassicFormOpen
+  const handleClassicUseLocation = useCallback(
+    (event?: React.MouseEvent<HTMLButtonElement>) => {
+      if (event) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+      fetchBrowserLocation()
+    },
+    []
+  )
+
+  useEffect(() => {
+    if (location) {
+      setClassicForm(prev => {
+        if (prev.location === location) return prev
+        return { ...prev, location }
+      })
+    }
+  }, [location])
   
   // Agent orchestration
   const {
@@ -368,31 +482,29 @@ export default function PartyPlanOS() {
   useEffect(() => {
     const timeout = setTimeout(() => setShowPage(true), 300)
     
-    // Auto-fetch location on page load if user has granted permission
     const autoFetchLocation = async () => {
-      if (navigator.geolocation && !location) {
-        // Check if we have permission to access location
-        try {
-          const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
-          if (permission.state === 'granted') {
-            // User has already granted permission, fetch location automatically
-            setTimeout(() => {
-              fetchBrowserLocation()
-            }, 1000) // Small delay to let the page load
-          }
-        } catch (error) {
-          // Permission API not supported, try to fetch anyway
-          setTimeout(() => {
-            fetchBrowserLocation()
-          }, 1000)
+      if (!navigator.geolocation || location) return
+      
+      const attemptFetch = () => {
+        setTimeout(() => {
+          fetchBrowserLocation()
+        }, 800)
+      }
+      
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+        if (permission.state === 'granted' || permission.state === 'prompt') {
+          attemptFetch()
         }
+      } catch (error) {
+        attemptFetch()
       }
     }
     
     autoFetchLocation()
     
     return () => clearTimeout(timeout)
-  }, [])
+  }, [location])
 
   // Cleanup error timeout on unmount
   useEffect(() => {
@@ -636,8 +748,6 @@ export default function PartyPlanOS() {
     setAgentLogs([])
     
     // Clear search mode hover states
-    setHoveredChip(null)
-    
     // Add initial logs before sending request
     addAgentLog('system_info', '🎉 Starting party plan generation...')
     addAgentLog('user_input', `User request: ${pinterestUrl || chatMessage}`, undefined, {
@@ -754,7 +864,6 @@ export default function PartyPlanOS() {
     setSelectedFile(null)
     setImagePreview(null)
     setError(null)
-    setHoveredChip(null)
     setAgentLogs([])
   }
 
@@ -1254,174 +1363,6 @@ export default function PartyPlanOS() {
             )}
           </AnimatePresence>
 
-              {/* Animated Background Elements for Chips */}
-              <AnimatePresence>
-            {mode === 'search' && hoveredChip === "🎉 BalloonVendor" && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {[...Array(8)].map((_, i) => (
-                      <motion.div
-                        key={`glass-particle-${i}`}
-                        className="absolute text-4xl"
-                        initial={{ 
-                          opacity: 0, 
-                          scale: 0,
-                          x: Math.random() * window.innerWidth,
-                          y: Math.random() * window.innerHeight
-                        }}
-                        animate={{ 
-                          opacity: [0, 1, 0],
-                          scale: [0, 1.2, 0],
-                          x: Math.random() * window.innerWidth,
-                          y: Math.random() * window.innerHeight,
-                          rotate: [0, 360, 720]
-                        }}
-                        exit={{ opacity: 0, scale: 0 }}
-                        transition={{ 
-                          duration: 3,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                          ease: "easeInOut"
-                        }}
-                        style={{
-                          color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'][i % 8]
-                        }}
-                      >
-                        🎈
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-                
-            {mode === 'search' && hoveredChip === "🍰 CakeArtist" && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {[...Array(6)].map((_, i) => (
-                      <motion.div
-                        key={`glass-particle-6-${i}`}
-                        className="absolute text-3xl"
-                        initial={{ 
-                          opacity: 0, 
-                          scale: 0,
-                          x: Math.random() * window.innerWidth,
-                          y: Math.random() * window.innerHeight
-                        }}
-                        animate={{ 
-                          opacity: [0, 1, 0],
-                          scale: [0, 1.5, 0],
-                          y: [Math.random() * window.innerHeight, Math.random() * window.innerHeight - 100],
-                          rotate: [0, 180, 360]
-                        }}
-                        exit={{ opacity: 0, scale: 0 }}
-                        transition={{ 
-                          duration: 4,
-                          repeat: Infinity,
-                          delay: i * 0.3,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        🍰
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-                
-            {mode === 'search' && hoveredChip === "📸 PhotoBooth" && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {[...Array(5)].map((_, i) => (
-                      <motion.div
-                        key={`glass-particle-5-${i}`}
-                        className="absolute text-2xl"
-                        initial={{ 
-                          opacity: 0, 
-                          scale: 0,
-                          x: Math.random() * window.innerWidth,
-                          y: Math.random() * window.innerHeight
-                        }}
-                        animate={{ 
-                          opacity: [0, 1, 0],
-                          scale: [0, 1.3, 0],
-                          x: [Math.random() * window.innerWidth, Math.random() * window.innerWidth],
-                          y: [Math.random() * window.innerHeight, Math.random() * window.innerHeight]
-                        }}
-                        exit={{ opacity: 0, scale: 0 }}
-                        transition={{ 
-                          duration: 2.5,
-                          repeat: Infinity,
-                          delay: i * 0.4,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        📸
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-                
-            {mode === 'search' && hoveredChip === "🪩 DJ" && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {[...Array(7)].map((_, i) => (
-                      <motion.div
-                        key={`glass-particle-7-${i}`}
-                        className="absolute text-3xl"
-                        initial={{ 
-                          opacity: 0, 
-                          scale: 0,
-                          x: Math.random() * window.innerWidth,
-                          y: Math.random() * window.innerHeight
-                        }}
-                        animate={{ 
-                          opacity: [0, 1, 0],
-                          scale: [0, 1.4, 0],
-                          rotate: [0, 360, 720],
-                          x: [Math.random() * window.innerWidth, Math.random() * window.innerWidth],
-                          y: [Math.random() * window.innerHeight, Math.random() * window.innerHeight]
-                        }}
-                        exit={{ opacity: 0, scale: 0 }}
-                        transition={{ 
-                          duration: 2,
-                          repeat: Infinity,
-                          delay: i * 0.15,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        🎵
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-                
-            {mode === 'search' && hoveredChip === "👗 DressThemes" && (
-                  <div className="absolute inset-0 pointer-events-none">
-                    {[...Array(6)].map((_, i) => (
-                      <motion.div
-                        key={`glass-particle-6-${i}`}
-                        className="absolute text-2xl"
-                        initial={{ 
-                          opacity: 0, 
-                          scale: 0,
-                          x: Math.random() * window.innerWidth,
-                          y: Math.random() * window.innerHeight
-                        }}
-                        animate={{ 
-                          opacity: [0, 1, 0],
-                          scale: [0, 1.2, 0],
-                          y: [Math.random() * window.innerHeight, Math.random() * window.innerHeight - 150],
-                          rotate: [0, 90, 180, 270, 360]
-                        }}
-                        exit={{ opacity: 0, scale: 0 }}
-                        transition={{ 
-                          duration: 3.5,
-                          repeat: Infinity,
-                          delay: i * 0.25,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        👗
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </AnimatePresence>
-
           {/* Mode-based layout */}
           {mode === 'search' ? (
             // SEARCH MODE
@@ -1500,6 +1441,19 @@ export default function PartyPlanOS() {
                   transition={{ delay: 0.35, duration: 0.4 }}
                 >
                   <div className="relative">
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <p className="text-xs font-semibold text-gray-700 tracking-wide">
+                        Location / City / Zip
+                      </p>
+                      {isLocationValid && (
+                        <span className="text-[11px] text-green-600 font-semibold flex items-center gap-1">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          Auto-detected
+                        </span>
+                      )}
+                    </div>
                     <motion.div
                       className="relative overflow-hidden rounded-2xl backdrop-blur-xl border-2 transition-all duration-300"
                       style={{
@@ -1564,7 +1518,7 @@ export default function PartyPlanOS() {
                         type="text"
                         value={location}
                         onChange={handleLocationChange}
-                        placeholder="Enter zip code or city (e.g., 95110 or San Jose, CA)"
+                        placeholder="Location / City / Zip (auto-detect if you allow 📍)"
                         className="w-full pl-14 pr-24 py-3.5 bg-transparent focus:outline-none text-gray-900 placeholder-gray-500 font-medium tracking-wide"
                         style={{
                           textShadow: '0 1px 2px rgba(255, 255, 255, 0.8)'
@@ -1741,7 +1695,7 @@ export default function PartyPlanOS() {
                               <line x1="12" y1="16" x2="12" y2="12"/>
                               <line x1="12" y1="8" x2="12.01" y2="8"/>
                             </svg>
-                            Enter location or click 📍 to use GPS
+                            Location / City / Zip or allow 📍 for auto-detect
                           </>
                         )}
                       </span>
@@ -1750,38 +1704,61 @@ export default function PartyPlanOS() {
                 </motion.div>
 
                 {/* Tabs - After Location Input */}
-                <div className="flex justify-center gap-3 sm:gap-4 mb-6 relative z-[60]">
-                  {["url", "prompt"].map((key, idx) => (
-                <motion.button
-                  key={key}
-                  onClick={() => {
-                    setTab(key)
-                    // Immediately focus the input after tab change
-                    setTimeout(() => {
-                      if (key === 'url' && urlInputRef.current) {
-                        urlInputRef.current.focus()
-                      } else if (key === 'prompt' && promptTextareaRef.current) {
-                        promptTextareaRef.current.focus()
-                      }
-                    }, 50)
-                  }}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ 
-                    opacity: 1,
-                    y: 0,
-                    transition: { delay: 0.4 + idx * 0.05, duration: 0.3 }
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`relative overflow-hidden px-5 sm:px-6 py-2.5 sm:py-3 rounded-full font-semibold transition-all duration-200 z-[70] pointer-events-auto ${
-                    tab === key 
-                      ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg' 
-                      : 'bg-white/40 text-gray-800 hover:bg-white/60'
-                  } backdrop-blur-xl border border-white/40`}
-                >
-                  <span className="relative z-10">{key === "url" ? "🔗 Inspiration" : "💬 Imagination"}</span>
-                </motion.button>
-              ))}
-            </div>
+                <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-6 relative z-[60]">
+                  <div className="flex gap-2 sm:gap-3">
+                    {["url", "prompt"].map((key, idx) => (
+                      <motion.button
+                        key={key}
+                        onClick={() => {
+                          setTab(key)
+                          setTimeout(() => {
+                            if (key === 'url' && urlInputRef.current) {
+                              urlInputRef.current.focus()
+                            } else if (key === 'prompt' && promptTextareaRef.current) {
+                              promptTextareaRef.current.focus()
+                            }
+                          }, 50)
+                        }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ 
+                          opacity: 1,
+                          y: 0,
+                          transition: { delay: 0.4 + idx * 0.05, duration: 0.3 }
+                        }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`relative overflow-hidden px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-sm font-semibold transition-all duration-200 z-[70] pointer-events-auto backdrop-blur-xl border border-white/40 ${
+                          tab === key && !isClassicActive ? 'text-white' : 'text-gray-800 hover:text-purple-700'
+                        }`}
+                      >
+                        {tab === key && !isClassicActive && (
+                          <motion.span
+                            layoutId="navHighlight"
+                            className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg"
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          />
+                        )}
+                        <span className="relative z-10">{key === "url" ? "🔗 Inspiration" : "💬 Imagination"}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => setIsClassicFormOpen(true)}
+                    className="relative overflow-hidden flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-semibold text-sm backdrop-blur-xl border border-white/40 shadow-sm"
+                    whileHover={{ scale: 1.04, y: -1 }}
+                    whileTap={{ scale: 0.95 }}
+                    title="Open classic form"
+                  >
+                    {isClassicFormOpen && (
+                      <motion.span
+                        layoutId="navHighlight"
+                        className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg"
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                    <span className={`relative z-10 ${isClassicFormOpen ? 'text-white' : 'text-purple-700 hover:text-purple-800'}`}>📝 Classic</span>
+                  </motion.button>
+                </div>
 
                 {/* Tab Panels */}
                 <AnimatePresence mode="wait">
@@ -1849,21 +1826,22 @@ export default function PartyPlanOS() {
                         disabled={loading}
                       />
                       
-                      {/* Sample Prompts Button */}
-                      <motion.button
-                        type="button"
-                        onClick={() => setShowPromptSamples(true)}
-                        className="absolute left-3 top-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-100/80 to-pink-100/80 text-purple-700 border border-purple-200/60 shadow-sm backdrop-blur-md hover:from-purple-200/80 hover:to-pink-200/80 transition-all duration-200"
-                        whileHover={{ scale: 1.04, y: -1 }}
-                        whileTap={{ scale: 0.95 }}
-                        title="Browse sample prompts"
-                        disabled={loading}
-                      >
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/80 text-xs shadow-sm">
-                          ✨
-                        </span>
-                        <span className="text-xs font-semibold tracking-wide whitespace-nowrap">Sample Prompts</span>
-                      </motion.button>
+                      <div className="absolute left-3 top-3">
+                        <motion.button
+                          type="button"
+                          onClick={() => setShowPromptSamples(true)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-100/80 to-pink-100/80 text-purple-700 border border-purple-200/60 shadow-sm backdrop-blur-md hover:from-purple-200/80 hover:to-pink-200/80 transition-all duration-200"
+                          whileHover={{ scale: 1.04, y: -1 }}
+                          whileTap={{ scale: 0.95 }}
+                          title="Browse sample prompts"
+                          disabled={loading}
+                        >
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-white/80 text-xs shadow-sm">
+                            ✨
+                          </span>
+                          <span className="text-xs font-semibold tracking-wide whitespace-nowrap">Sample Prompts</span>
+                        </motion.button>
+                      </div>
                       
                       {/* Clear Button */}
                       {chatMessage && (
@@ -2069,6 +2047,7 @@ export default function PartyPlanOS() {
                     >
                       💡 Add a prompt or click the image icon to upload!
                     </motion.p>
+
                   </div>
                 )}
               </motion.div>
@@ -2138,56 +2117,6 @@ export default function PartyPlanOS() {
               </motion.div>
             )}
 
-
-                {/* Tags */}
-                <motion.div
-                  className="flex flex-wrap justify-center gap-1.5 sm:gap-2"
-                  initial="hidden"
-                  animate="visible"
-                  variants={{
-                    hidden: {},
-                    visible: {
-                      transition: { staggerChildren: 0.08, delayChildren: 0.8 }
-                    }
-                  }}
-                >
-                  {partyTags.map((tag, idx) => {
-                    const chipStyles = [
-                      "px-2 py-1 text-xs rounded-full bg-gradient-to-r from-pink-100 to-rose-100 border border-pink-200 text-pink-700 shadow-sm",
-                      "px-2 py-1 text-xs rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 border border-blue-200 text-blue-700 shadow-sm",
-                      "px-2 py-1 text-xs rounded-full bg-gradient-to-r from-purple-100 to-violet-100 border border-purple-200 text-purple-700 shadow-sm",
-                      "px-2 py-1 text-xs rounded-full bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 text-green-700 shadow-sm",
-                      "px-2 py-1 text-xs rounded-full bg-gradient-to-r from-yellow-100 to-amber-100 border border-yellow-200 text-yellow-700 shadow-sm"
-                    ]
-                    
-                    return (
-                      <motion.span
-                        key={`tag-${tag}-${idx}`}
-                        className={`relative overflow-hidden font-medium cursor-pointer ${chipStyles[idx % chipStyles.length]}`}
-                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        whileHover={{ 
-                          scale: 1.1,
-                          y: -3,
-                          boxShadow: "0 8px 25px -5px rgba(0, 0, 0, 0.2)",
-                          transition: { duration: 0.3 }
-                        }}
-                        whileTap={{ scale: 0.95 }}
-                        onHoverStart={() => setHoveredChip(tag)}
-                        onHoverEnd={() => setHoveredChip(null)}
-                      >
-                        <motion.span
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-                          initial={{ x: "-100%" }}
-                          whileHover={{ x: "100%" }}
-                          transition={{ duration: 0.6 }}
-                        />
-                        <span className="relative z-10">{tag}</span>
-                      </motion.span>
-                    )
-                  })}
-                </motion.div>
 
             {/* Legacy Results Display - Fallback */}
             {generatedPlan && (
@@ -2535,6 +2464,231 @@ export default function PartyPlanOS() {
               <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
                 <div className="absolute -top-16 -right-10 w-56 h-56 bg-purple-200/40 rounded-full blur-2xl" />
                 <div className="absolute -bottom-20 -left-14 w-72 h-72 bg-pink-200/40 rounded-full blur-2xl" />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isClassicFormOpen && (
+          <motion.div
+            className="fixed inset-0 z-[130] flex items-center justify-center px-4 py-6 bg-gradient-to-br from-purple-900/40 via-pink-900/30 to-amber-900/30 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsClassicFormOpen(false)}
+          >
+            <motion.div
+              className="relative w-full max-w-4xl max-h-[85vh] overflow-hidden rounded-[32px] border border-white/30 bg-white/90 shadow-[0_30px_120px_rgba(111,63,203,0.35)]"
+              initial={{ scale: 0.9, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 40 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="absolute inset-0">
+                <div className="absolute w-64 h-64 -top-24 -left-16 bg-pink-200/50 blur-3xl rounded-full" />
+                <div className="absolute w-80 h-80 -bottom-32 -right-20 bg-purple-200/60 blur-3xl rounded-full" />
+                {[...Array(25)].map((_, i) => (
+                  <motion.span
+                    key={`sparkle-${i}`}
+                    className="absolute w-1.5 h-1.5 rounded-full bg-gradient-to-br from-yellow-200 to-pink-300"
+                    style={{
+                      top: `${Math.random() * 100}%`,
+                      left: `${Math.random() * 100}%`,
+                      opacity: 0.5
+                    }}
+                    animate={{
+                      opacity: [0.2, 0.9, 0.2],
+                      scale: [0.8, 1.4, 0.8],
+                      y: [0, -6, 0]
+                    }}
+                    transition={{
+                      duration: 3 + Math.random() * 2,
+                      repeat: Infinity,
+                      delay: Math.random() * 1.5
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="relative z-10 p-6 sm:p-8 overflow-y-auto max-h-[85vh] space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold tracking-wide text-pink-500 uppercase flex items-center gap-2">
+                      <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-500 text-white text-[10px] shadow-lg">✨</span>
+                      Celebration Ready
+                    </p>
+                    <h3 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                      Classic Party Brief
+                      <span className="text-sm font-semibold text-purple-500">Let’s script your dream event</span>
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Fill these sparkle-ready details and we’ll craft the perfect imagination prompt for you.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <motion.button
+                      type="button"
+                      onClick={() => setClassicForm(createClassicFormState())}
+                      className="flex items-center gap-2 px-3 py-2 rounded-full border border-purple-200 text-purple-600 text-sm font-semibold hover:bg-purple-50"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                    >
+                      Reset
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      onClick={() => setIsClassicFormOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-full bg-black/5 text-gray-600 text-sm font-semibold hover:bg-black/10"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                    >
+                      Close
+                    </motion.button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="text-xs font-semibold text-gray-600 flex flex-col gap-1">
+                    Event Type
+                    <select
+                      value={classicForm.eventType}
+                      onChange={(e) => handleClassicFormChange('eventType', e.target.value)}
+                      className="w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                    >
+                      <option value="">Pick a vibe</option>
+                      {eventTypeOptions.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {[
+                    { key: 'occasionName', label: 'Event Name', placeholder: 'e.g., Maya’s Sweet 16' },
+                    { key: 'honoree', label: 'Honoree / Host', placeholder: 'Maya Johnson' },
+                    { key: 'location', label: 'Location / City', placeholder: 'Brooklyn loft, NYC' },
+                    { key: 'date', label: 'Date', type: 'date' },
+                    { key: 'time', label: 'Time', placeholder: '6pm - 10pm' },
+                    { key: 'budget', label: 'Budget', placeholder: '$8,000' },
+                    { key: 'theme', label: 'Theme / Style', placeholder: 'Neon glow party' }
+                  ].map((field) => {
+                    if (field.key === 'location') {
+                      return (
+                        <label key={field.key} className="text-xs font-semibold text-gray-600 flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <span>Location / City / Zip</span>
+                            <motion.button
+                              type="button"
+                              onClick={handleClassicUseLocation}
+                              disabled={isFetchingLocation}
+                              className="text-[11px] font-semibold text-purple-600 hover:text-purple-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                              whileHover={!isFetchingLocation ? { scale: 1.05 } : {}}
+                              whileTap={!isFetchingLocation ? { scale: 0.95 } : {}}
+                            >
+                              {isFetchingLocation ? (
+                                <>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" className="animate-spin" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10" opacity="0.25" />
+                                    <path d="M22 12a10 10 0 0 1-10 10" />
+                                  </svg>
+                                  Locating...
+                                </>
+                              ) : (
+                                <>
+                                  📍 Use my location
+                                </>
+                              )}
+                            </motion.button>
+                          </div>
+                          <input
+                            type="text"
+                            value={classicForm.location}
+                            onChange={(e) => handleClassicFormChange('location', e.target.value)}
+                            className="w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                            placeholder="City, venue or zip"
+                          />
+                        </label>
+                      )
+                    }
+                    return (
+                      <label key={field.key} className="text-xs font-semibold text-gray-600 flex flex-col gap-1">
+                        {field.label}
+                        <input
+                          type={field.type || 'text'}
+                          value={(classicForm as any)[field.key] || ''}
+                          onChange={(e) => handleClassicFormChange(field.key as keyof typeof classicForm, e.target.value)}
+                          className="w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                          placeholder={field.placeholder}
+                        />
+                      </label>
+                    )
+                  })}
+
+                  <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-2xl bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-100/70 p-4">
+                    <div>
+                      <p className="text-xs font-semibold text-pink-600 flex items-center gap-2">
+                        <span className="inline-flex w-4 h-4 items-center justify-center rounded-full bg-white shadow text-[10px]">👨</span>
+                        Adults
+                      </p>
+                      <input
+                        type="number"
+                        min="0"
+                        value={classicForm.guestAdults}
+                        onChange={(e) => handleClassicFormChange('guestAdults', e.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-white bg-white/80 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300"
+                        placeholder="e.g., 40"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-purple-600 flex items-center gap-2">
+                        <span className="inline-flex w-4 h-4 items-center justify-center rounded-full bg-white shadow text-[10px]">🧒</span>
+                        Kids
+                      </p>
+                      <input
+                        type="number"
+                        min="0"
+                        value={classicForm.guestKids}
+                        onChange={(e) => handleClassicFormChange('guestKids', e.target.value)}
+                        className="mt-1 w-full rounded-2xl border border-white bg-white/80 px-4 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                        placeholder="e.g., 12"
+                      />
+                    </div>
+                  </div>
+
+                  <label className="md:col-span-2 text-xs font-semibold text-gray-600 flex flex-col gap-1">
+                    Extra Notes
+                    <textarea
+                      value={classicForm.notes}
+                      onChange={(e) => handleClassicFormChange('notes', e.target.value)}
+                      className="w-full rounded-2xl border border-gray-200 bg-white/80 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-300 min-h-[90px]"
+                      placeholder="Must-have details, surprises, must-avoid colors, etc."
+                    />
+                  </label>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex-1 bg-white/80 border border-white/70 rounded-3xl px-4 py-3 text-xs text-gray-600 shadow-inner">
+                    <p className="text-[11px] font-semibold text-purple-500 uppercase tracking-wide flex items-center gap-1">
+                      <span>Preview</span>
+                      <motion.span
+                        animate={{ opacity: [1, 0.4, 1] }}
+                        transition={{ duration: 1.4, repeat: Infinity }}
+                      >
+                        ✨
+                      </motion.span>
+                    </p>
+                    <p className="mt-2 text-sm text-gray-800 leading-relaxed">{classicPromptPreview}</p>
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={applyClassicFormToPrompt}
+                    className="w-full sm:w-auto px-6 py-3 rounded-3xl bg-gradient-to-r from-purple-500 via-pink-500 to-amber-400 text-white text-sm font-semibold shadow-lg hover:shadow-xl"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Use These Details
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
