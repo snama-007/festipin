@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Festimo - Celebration Vendor Brand Guide</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Primary Festive Colors - Yellow & Green Theme */
+            --primary-sunshine: #FFD93D;
+            --primary-lime: #6BCF7E;
+            --primary-emerald: #2DB876;
+            
+            /* Secondary Celebration Colors */
+            --citrus-orange: #FFB347;
+            --mint-fresh: #4ECCA3;
+            --golden-hour: #FFCB47;
+            --spring-green: #8FE1A2;
+            --coral-pink: #FF9A8B;
+            
+            /* UI Foundation */
+            --pure-white: #FFFFFF;
+            --soft-cream: #FFFEF5;
+            --light-gray: #F8FAF5;
+            --medium-gray: #E8EDE5;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            
+            /* Gradients */
+            --gradient-sunshine: linear-gradient(135deg, #FFD93D 0%, #6BCF7E 100%);
+            --gradient-tropical: linear-gradient(135deg, #FFCB47 0%, #2DB876 100%);
+            --gradient-citrus: linear-gradient(135deg, #FFB347 0%, #4ECCA3 100%);
+            --gradient-garden: linear-gradient(135deg, #6BCF7E 0%, #8FE1A2 100%);
+            
+            /* Shadows */
+            --shadow-sm: 0 2px 8px rgba(107, 207, 126, 0.15);
+            --shadow-md: 0 4px 20px rgba(107, 207, 126, 0.2);
+            --shadow-lg: 0 10px 40px rgba(107, 207, 126, 0.25);
+            
+            /* Border Radius */
+            --radius-sm: 12px;
+            --radius-md: 20px;
+            --radius-lg: 28px;
+            --radius-full: 9999px;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--soft-cream);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-weight: 700;
+        }
+
+        /* Confetti Animation Background */
+        .confetti-bg {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .confetti-piece {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
+
+        /* Hero Section */
+        .hero {
+            background: var(--gradient-sunshine);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '🌻';
+            position: absolute;
+            font-size: 200px;
+            opacity: 0.1;
+            animation: float 20s ease-in-out infinite;
+            left: 10%;
+            top: 10%;
+        }
+
+        .hero::after {
+            content: '🎊';
+            position: absolute;
+            font-size: 150px;
+            opacity: 0.1;
+            animation: float 25s ease-in-out infinite;
+            right: 10%;
+            bottom: 10%;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-50px) rotate(10deg); }
+        }
+
+        .hero-content {
+            text-align: center;
+            max-width: 800px;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 4rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: rgba(255,255,255,0.95);
+            font-weight: 500;
+            margin-bottom: 2rem;
+        }
+
+        /* Floating Shapes */
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            animation: floatShape 20s infinite;
+            opacity: 0.15;
+        }
+
+        .shape1 {
+            width: 300px;
+            height: 300px;
+            background: var(--primary-sunshine);
+            top: -150px;
+            left: -150px;
+            animation-duration: 25s;
+        }
+
+        .shape2 {
+            width: 200px;
+            height: 200px;
+            background: var(--primary-lime);
+            bottom: -100px;
+            right: -100px;
+            animation-duration: 30s;
+        }
+
+        .shape3 {
+            width: 150px;
+            height: 150px;
+            background: var(--mint-fresh);
+            top: 50%;
+            left: 70%;
+            animation-duration: 20s;
+        }
+
+        @keyframes floatShape {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(100px, -100px) rotate(120deg); }
+            66% { transform: translate(-100px, 100px) rotate(240deg); }
+        }
+
+        /* Section Styles */
+        .section {
+            padding: 4rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: var(--gradient-tropical);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            margin-bottom: 3rem;
+        }
+
+        /* Color Palette */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .color-card {
+            background: white;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .color-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .color-preview {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .color-info {
+            padding: 1rem;
+            background: white;
+        }
+
+        .color-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .color-hex {
+            font-family: 'Courier New', monospace;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Typography Showcase */
+        .type-showcase {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .type-example {
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .type-label {
+            font-size: 0.875rem;
+            color: var(--primary-emerald);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        /* UI Components */
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .component-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 2rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 28px;
+            border-radius: var(--radius-full);
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            margin: 0.5rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--gradient-sunshine);
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 217, 61, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(255, 217, 61, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary-emerald);
+            border: 2px solid var(--primary-emerald);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-emerald);
+            color: white;
+        }
+
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: var(--primary-emerald);
+            border: 1px solid rgba(107, 207, 126, 0.3);
+        }
+
+        /* Cards */
+        .vendor-card {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .vendor-card:hover {
+            border-color: var(--primary-lime);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .vendor-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--gradient-tropical);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Input Fields */
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--medium-gray);
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-lime);
+            box-shadow: 0 0 0 3px rgba(107, 207, 126, 0.1);
+        }
+
+        /* Toggle Switch */
+        .toggle {
+            position: relative;
+            width: 60px;
+            height: 32px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--medium-gray);
+            transition: .4s;
+            border-radius: var(--radius-full);
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 4px;
+            bottom: 4px;
+            background: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background: var(--gradient-tropical);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(28px);
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .badge-active {
+            background: rgba(107, 207, 126, 0.2);
+            color: var(--primary-emerald);
+        }
+
+        .badge-pending {
+            background: rgba(255, 217, 61, 0.2);
+            color: #D97706;
+        }
+
+        .badge-celebration {
+            background: var(--gradient-sunshine);
+            color: white;
+        }
+
+        /* Mobile Dashboard Preview */
+        .mobile-frame {
+            width: 375px;
+            height: 812px;
+            background: black;
+            border-radius: 40px;
+            padding: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin: 2rem auto;
+        }
+
+        .mobile-screen {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 30px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .dashboard-preview {
+            background: var(--light-gray);
+            min-height: 100%;
+        }
+
+        .mobile-header {
+            background: var(--gradient-sunshine);
+            padding: 20px;
+            color: white;
+        }
+
+        .mobile-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .hamburger {
+            width: 24px;
+            height: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hamburger span {
+            width: 100%;
+            height: 3px;
+            background: white;
+            border-radius: 2px;
+        }
+
+        .mobile-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: var(--radius-sm);
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        /* Swipeable Cards Container */
+        .swipe-container {
+            padding: 20px;
+            overflow-x: auto;
+            display: flex;
+            gap: 15px;
+            scroll-snap-type: x mandatory;
+        }
+
+        .event-card {
+            min-width: 280px;
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 20px;
+            scroll-snap-align: start;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .event-emoji {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .event-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .event-date {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid var(--medium-gray);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            padding: 5px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .nav-item:hover {
+            color: var(--primary-emerald);
+        }
+
+        .nav-item.active {
+            color: var(--primary-lime);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Animated Elements */
+        .sparkle {
+            display: inline-block;
+            animation: sparkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Notification Dot */
+        .notification-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--coral-pink);
+            border-radius: 50%;
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .mobile-frame {
+                width: 100%;
+                max-width: 375px;
+            }
+            
+            .section {
+                padding: 2rem 1rem;
+            }
+            
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+
+        /* Festival Decorations */
+        .festival-icon {
+            display: inline-block;
+            animation: sway 3s ease-in-out infinite;
+        }
+
+        @keyframes sway {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Confetti Background -->
+    <div class="confetti-bg" id="confetti"></div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="floating-shape shape1"></div>
+        <div class="floating-shape shape2"></div>
+        <div class="floating-shape shape3"></div>
+        <div class="hero-content">
+            <h1 class="logo">Festimo <span class="festival-icon">🌻</span></h1>
+            <p class="tagline">Bright Celebrations, Seamless Management</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <span class="badge badge-celebration">🎊 Events</span>
+                <span class="badge badge-celebration">🌿 Garden Parties</span>
+                <span class="badge badge-celebration">☀️ Summer Fest</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Brand Values -->
+    <section class="section">
+        <h2 class="section-title">Brand Personality</h2>
+        <p class="section-subtitle">Fresh • Vibrant • Natural • Joyful</p>
+        
+        <div class="component-grid">
+            <div class="vendor-card">
+                <div class="vendor-avatar">🌈</div>
+                <h3>Bright & Optimistic</h3>
+                <p>Every interaction radiates positivity with sunny yellows and fresh greens that energize vendors</p>
+            </div>
+            <div class="vendor-card">
+                <div class="vendor-avatar">🍃</div>
+                <h3>Natural & Organic</h3>
+                <p>Earthy green tones create a sense of growth and sustainability in every celebration</p>
+            </div>
+            <div class="vendor-card">
+                <div class="vendor-avatar">⚡</div>
+                <h3>Fresh & Modern</h3>
+                <p>Clean interfaces with citrus accents that feel contemporary and effortlessly professional</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Color Palette -->
+    <section class="section" style="background: var(--light-gray);">
+        <h2 class="section-title">Sunny Color Palette</h2>
+        <p class="section-subtitle">Nature-inspired colors that radiate joy and freshness</p>
+        
+        <h3 style="margin-bottom: 1.5rem; color: var(--primary-emerald);">Primary Celebration Colors</h3>
+        <div class="color-grid">
+            <div class="color-card" onclick="copyColor('#FFD93D')">
+                <div class="color-preview" style="background: #FFD93D;">☀️</div>
+                <div class="color-info">
+                    <div class="color-name">Sunshine Yellow</div>
+                    <div class="color-hex">#FFD93D</div>
+                </div>
+            </div>
+            <div class="color-card" onclick="copyColor('#6BCF7E')">
+                <div class="color-preview" style="background: #6BCF7E;">🍃</div>
+                <div class="color-info">
+                    <div class="color-name">Fresh Lime</div>
+                    <div class="color-hex">#6BCF7E</div>
+                </div>
+            </div>
+            <div class="color-card" onclick="copyColor('#2DB876')">
+                <div class="color-preview" style="background: #2DB876;">🌿</div>
+                <div class="color-info">
+                    <div class="color-name">Emerald Green</div>
+                    <div class="color-hex">#2DB876</div>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="margin: 2rem 0 1.5rem; color: var(--primary-emerald);">Secondary Accent Colors</h3>
+        <div class="color-grid">
+            <div class="color-card" onclick="copyColor('#FFB347')">
+                <div class="color-preview" style="background: #FFB347;">🍊</div>
+                <div class="color-info">
+                    <div class="color-name">Citrus Orange</div>
+                    <div class="color-hex">#FFB347</div>
+                </div>
+            </div>
+            <div class="color-card" onclick="copyColor('#4ECCA3')">
+                <div class="color-preview" style="background: #4ECCA3;">🌱</div>
+                <div class="color-info">
+                    <div class="color-name">Mint Fresh</div>
+                    <div class="color-hex">#4ECCA3</div>
+                </div>
+            </div>
+            <div class="color-card" onclick="copyColor('#FFCB47')">
+                <div class="color-preview" style="background: #FFCB47;">🌟</div>
+                <div class="color-info">
+                    <div class="color-name">Golden Hour</div>
+                    <div class="color-hex">#FFCB47</div>
+                </div>
+            </div>
+            <div class="color-card" onclick="copyColor('#8FE1A2')">
+                <div class="color-preview" style="background: #8FE1A2;">🌸</div>
+                <div class="color-info">
+                    <div class="color-name">Spring Green</div>
+                    <div class="color-hex">#8FE1A2</div>
+                </div>
+            </div>
+            <div class="color-card" onclick="copyColor('#FF9A8B')">
+                <div class="color-preview" style="background: #FF9A8B;">🌺</div>
+                <div class="color-info">
+                    <div class="color-name">Coral Accent</div>
+                    <div class="color-hex">#FF9A8B</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Typography -->
+    <section class="section">
+        <h2 class="section-title">Typography System</h2>
+        <p class="section-subtitle">Clean, modern, and optimized for mobile readability</p>
+        
+        <div class="type-showcase">
+            <div class="type-example">
+                <div class="type-label">Display • Outfit Extra Bold</div>
+                <h1 style="font-size: 2.5rem; font-weight: 800;">Celebrate in Style</h1>
+            </div>
+            <div class="type-example">
+                <div class="type-label">Heading • Outfit Bold</div>
+                <h2 style="font-size: 1.875rem;">Summer Garden Party</h2>
+            </div>
+            <div class="type-example">
+                <div class="type-label">Subheading • Outfit Semibold</div>
+                <h3 style="font-size: 1.25rem; font-weight: 600;">Today's Events</h3>
+            </div>
+            <div class="type-example">
+                <div class="type-label">Body • DM Sans Regular</div>
+                <p style="font-size: 1rem; line-height: 1.7;">
+                    Bring sunshine to every celebration with our intuitive vendor dashboard. 
+                    Manage bookings, coordinate services, and create memorable outdoor events with ease.
+                </p>
+            </div>
+            <div class="type-example">
+                <div class="type-label">Caption • DM Sans Medium</div>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">
+                    3 garden parties scheduled • Perfect weather forecast ☀️
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- UI Components -->
+    <section class="section" style="background: var(--light-gray);">
+        <h2 class="section-title">UI Components</h2>
+        <p class="section-subtitle">Fresh, natural, and delightfully interactive</p>
+        
+        <div class="component-grid">
+            <!-- Buttons Component -->
+            <div class="component-card">
+                <h3 style="margin-bottom: 1rem;">Buttons</h3>
+                <button class="btn btn-primary">Book Event ☀️</button>
+                <button class="btn btn-secondary">View Calendar</button>
+                <button class="btn btn-glass">Share</button>
+            </div>
+
+            <!-- Status Badges -->
+            <div class="component-card">
+                <h3 style="margin-bottom: 1rem;">Status Badges</h3>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <span class="badge badge-active">• Active</span>
+                    <span class="badge badge-pending">• Pending</span>
+                    <span class="badge badge-celebration">🌻 Confirmed</span>
+                </div>
+            </div>
+
+            <!-- Form Elements -->
+            <div class="component-card">
+                <h3 style="margin-bottom: 1rem;">Form Elements</h3>
+                <div class="input-group">
+                    <label class="input-label">Event Name</label>
+                    <input type="text" class="input-field" placeholder="Summer Garden Party 🌿">
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <label class="toggle">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Outdoor venue ready</span>
+                </div>
+            </div>
+
+            <!-- Event Card -->
+            <div class="component-card">
+                <h3 style="margin-bottom: 1rem;">Event Card</h3>
+                <div class="vendor-card pulse">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <h4>Spring Festival 🌸</h4>
+                            <p style="color: var(--text-secondary); margin: 0.5rem 0;">April 20, 2024</p>
+                            <span class="badge badge-celebration">200 Guests</span>
+                        </div>
+                        <div style="position: relative;">
+                            <span class="sparkle">🌟</span>
+                            <span class="notification-dot"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mobile Dashboard Preview -->
+    <section class="section">
+        <h2 class="section-title">Mobile Dashboard Experience</h2>
+        <p class="section-subtitle">Swipe through celebrations with natural, intuitive gestures</p>
+        
+        <div class="mobile-frame">
+            <div class="mobile-screen">
+                <div class="dashboard-preview">
+                    <!-- Mobile Header -->
+                    <div class="mobile-header">
+                        <div class="mobile-nav">
+                            <div class="hamburger">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <h3 style="font-weight: 700;">Festimo</h3>
+                            <div style="position: relative;">
+                                <span style="font-size: 1.5rem;">🔔</span>
+                                <span class="notification-dot"></span>
+                            </div>
+                        </div>
+                        <div class="mobile-stats">
+                            <div class="stat-card">
+                                <div class="stat-number">32</div>
+                                <div class="stat-label">Events This Month</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">$18.5k</div>
+                                <div class="stat-label">Revenue</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Swipeable Cards -->
+                    <h4 style="padding: 20px 20px 0; font-weight: 700; color: var(--primary-emerald);">Today's Celebrations</h4>
+                    <div class="swipe-container">
+                        <div class="event-card">
+                            <div class="event-emoji">🌻</div>
+                            <div class="event-title">Garden Party</div>
+                            <div class="event-date">2:00 PM • Outdoor • 75 guests</div>
+                            <button class="btn btn-primary" style="width: 100%; margin-top: 15px;">View Details</button>
+                        </div>
+                        <div class="event-card">
+                            <div class="event-emoji">🎊</div>
+                            <div class="event-title">Summer Festival</div>
+                            <div class="event-date">5:00 PM • Park • 200 guests</div>
+                            <button class="btn btn-secondary" style="width: 100%; margin-top: 15px;">Manage</button>
+                        </div>
+                        <div class="event-card">
+                            <div class="event-emoji">🍋</div>
+                            <div class="event-title">Lemonade Social</div>
+                            <div class="event-date">7:00 PM • Terrace • 50 guests</div>
+                            <button class="btn btn-glass" style="width: 100%; margin-top: 15px;">Check-in</button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div style="padding: 20px;">
+                        <h4 style="font-weight: 700; margin-bottom: 15px; color: var(--primary-emerald);">Quick Actions</h4>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                            <div class="vendor-card" style="text-align: center; cursor: pointer;">
+                                <span style="font-size: 2rem;">📅</span>
+                                <p style="margin-top: 0.5rem; font-weight: 600;">Calendar</p>
+                            </div>
+                            <div class="vendor-card" style="text-align: center; cursor: pointer;">
+                                <span style="font-size: 2rem;">🌿</span>
+                                <p style="margin-top: 0.5rem; font-weight: 600;">Venues</p>
+                            </div>
+                            <div class="vendor-card" style="text-align: center; cursor: pointer;">
+                                <span style="font-size: 2rem;">💰</span>
+                                <p style="margin-top: 0.5rem; font-weight: 600;">Earnings</p>
+                            </div>
+                            <div class="vendor-card" style="text-align: center; cursor: pointer;">
+                                <span style="font-size: 2rem;">📊</span>
+                                <p style="margin-top: 0.5rem; font-weight: 600;">Analytics</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Navigation -->
+                    <div class="bottom-nav">
+                        <div class="nav-item active">
+                            <div class="nav-icon">🏠</div>
+                            <span class="nav-label">Home</span>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">📅</div>
+                            <span class="nav-label">Events</span>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon" style="background: var(--gradient-sunshine); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">+</div>
+                            <span class="nav-label">Create</span>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">💬</div>
+                            <span class="nav-label">Chat</span>
+                        </div>
+                        <div class="nav-item">
+                            <div class="nav-icon">👤</div>
+                            <span class="nav-label">Profile</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Animation & Interactions -->
+    <section class="section" style="background: var(--light-gray);">
+        <h2 class="section-title">Micro-Interactions & Animations</h2>
+        <p class="section-subtitle">Natural movements that bring joy to every interaction</p>
+        
+        <div class="component-grid">
+            <div class="component-card">
+                <h3 style="color: var(--primary-emerald);">Organic Feedback</h3>
+                <p>• Gentle spring animations</p>
+                <p>• Leaf flutter on success</p>
+                <p>• Sunburst on achievements</p>
+            </div>
+            <div class="component-card">
+                <h3 style="color: var(--primary-emerald);">Natural Gestures</h3>
+                <p>• Smooth swipe transitions</p>
+                <p>• Elastic bounce effects</p>
+                <p>• Ripple animations in yellow</p>
+            </div>
+            <div class="component-card">
+                <h3 style="color: var(--primary-emerald);">Loading States</h3>
+                <p>• Growing plant animations</p>
+                <p>• Sunshine pulse effects</p>
+                <p>• Leaf spinner for waits</p>
+            </div>
+            <div class="component-card">
+                <h3 style="color: var(--primary-emerald);">Celebrations</h3>
+                <p>• Confetti in yellows & greens</p>
+                <p>• Floating flower petals</p>
+                <p>• Sparkle trails in gold</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Brand Guidelines Summary -->
+    <section class="section">
+        <h2 class="section-title">Implementation Guidelines</h2>
+        <p class="section-subtitle">Key principles for maintaining the fresh, natural brand feel</p>
+        
+        <div class="type-showcase">
+            <div style="display: grid; gap: 2rem;">
+                <div>
+                    <h3 style="color: var(--primary-emerald); margin-bottom: 1rem;">🌿 Visual Hierarchy</h3>
+                    <ul style="line-height: 2; color: var(--text-secondary);">
+                        <li>Use yellow-to-green gradients for primary actions</li>
+                        <li>Apply natural shadows with green tints</li>
+                        <li>Maintain organic shapes and rounded corners</li>
+                        <li>Keep layouts airy with plenty of white space</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 style="color: var(--primary-emerald); margin-bottom: 1rem;">☀️ Color Usage</h3>
+                    <ul style="line-height: 2; color: var(--text-secondary);">
+                        <li>Sunshine Yellow for primary CTAs and joy moments</li>
+                        <li>Fresh Lime for active states and confirmations</li>
+                        <li>Emerald Green for navigation and grounding elements</li>
+                        <li>Citrus accents for notifications and alerts</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 style="color: var(--primary-emerald); margin-bottom: 1rem;">📱 Mobile Experience</h3>
+                    <ul style="line-height: 2; color: var(--text-secondary);">
+                        <li>Bottom navigation with nature-inspired icons</li>
+                        <li>Swipe cards with spring physics</li>
+                        <li>Touch targets minimum 44x44px with green hover states</li>
+                        <li>Vertical feed optimized for outdoor brightness</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 style="color: var(--primary-emerald); margin-bottom: 1rem;">🌻 Natural Elements</h3>
+                    <ul style="line-height: 2; color: var(--text-secondary);">
+                        <li>Use nature emojis to enhance understanding</li>
+                        <li>Organic shapes and flowing transitions</li>
+                        <li>Seasonal themes that adapt to event types</li>
+                        <li>Balance freshness with professional clarity</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Generate confetti in yellow and green
+        function createConfetti() {
+            const confettiContainer = document.getElementById('confetti');
+            const colors = ['#FFD93D', '#6BCF7E', '#FFCB47', '#4ECCA3', '#8FE1A2', '#FFB347'];
+            
+            for (let i = 0; i < 30; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti-piece';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDuration = (Math.random() * 3 + 5) + 's';
+                confetti.style.animationDelay = Math.random() * 5 + 's';
+                confetti.style.opacity = '0.3';
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                confettiContainer.appendChild(confetti);
+            }
+        }
+
+        // Copy color to clipboard
+        function copyColor(color) {
+            navigator.clipboard.writeText(color).then(() => {
+                // Create temporary notification
+                const notification = document.createElement('div');
+                notification.textContent = `${color} copied! 🌿`;
+                notification.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: linear-gradient(135deg, #FFD93D 0%, #6BCF7E 100%);
+                    color: white;
+                    padding: 1rem 1.5rem;
+                    border-radius: 28px;
+                    box-shadow: 0 10px 30px rgba(107, 207, 126, 0.3);
+                    animation: fadeInUp 0.5s ease;
+                    z-index: 1000;
+                    font-weight: 600;
+                `;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.animation = 'fadeOut 0.5s ease';
+                    setTimeout(() => notification.remove(), 500);
+                }, 2000);
+            });
+        }
+
+        // Initialize confetti on load
+        createConfetti();
+
+        // Add hover effect to cards
+        document.querySelectorAll('.vendor-card, .event-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-3px) scale(1.02)';
+            });
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Simulate swipe interaction
+        const swipeContainer = document.querySelector('.swipe-container');
+        if (swipeContainer) {
+            swipeContainer.addEventListener('scroll', function() {
+                const cards = this.querySelectorAll('.event-card');
+                cards.forEach(card => {
+                    const rect = card.getBoundingClientRect();
+                    const parentRect = this.getBoundingClientRect();
+                    const offset = (rect.left - parentRect.left) / parentRect.width;
+                    card.style.opacity = Math.max(0.7, 1 - Math.abs(offset - 0.2));
+                });
+            });
+        }
+
+        // Add fadeOut animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(20px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

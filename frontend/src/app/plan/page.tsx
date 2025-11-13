@@ -1,327 +1,602 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-type PlanBlock = {
-  title: string
-  intent: string
-  highlights: string[]
-  nudges: string[]
+type ClassicData = {
+  eventType: string
+  occasion: string
+  honoree: string
+  locationLabel: string
+  adultGuests: string
+  kidGuests: string
+  budget: string
+  date: string
+  timeStart: string
+  timeEnd: string
+  constraints: string
+  guestNotes: string
+  extraIntent: string
 }
 
-const PLAN_BLOCKS: PlanBlock[] = [
+const BRAND = {
+  sunshine: '#FFD93D',
+  lime: '#6BCF7E',
+  emerald: '#2DB876',
+  cream: '#FFFEF5',
+  graphite: '#1F2937',
+  smoke: '#6B7280'
+}
+
+const JOURNEY_MAP = [
+  { time: '6:00 PM', label: 'Arrivals + Aura Scan', detail: 'Guests walk a glow runway, drop voice notes, receive AI aura keepsake.' },
+  { time: '6:25 PM', label: 'Lighting Reveal', detail: 'Parents toast, room floods with “Neon Bloom” scene, Maya’s sketches projected.' },
+  { time: '6:45 PM', label: 'Dinner Pods', detail: 'Conversation cards, shared plates, scent cue shifts to grapefruit cedar.' },
+  { time: '7:15 PM', label: 'Dance Bloom', detail: 'DJ x sax overlay, mocktail lab opens, gratitude wall activated.' }
+]
+
+const CLASSIC_DEFAULTS: ClassicData = {
+  eventType: '',
+  occasion: '',
+  honoree: '',
+  locationLabel: '',
+  adultGuests: '',
+  kidGuests: '',
+  budget: '',
+  date: '',
+  timeStart: '',
+  timeEnd: '',
+  constraints: '',
+  guestNotes: '',
+  extraIntent: ''
+}
+
+const ACTION_ITEMS = [
+  { task: 'Lock Loft Venue', owner: 'You', due: 'Apr 15', status: 'Pending' },
+  { task: 'Lighting + Install Call', owner: 'Festimo Agent', due: 'Apr 02', status: 'Scheduled' },
+  { task: 'Menu Mood Board', owner: 'Catering Lead', due: 'Mar 28', status: 'Draft' }
+]
+
+const DECISIONS = [
   {
-    title: 'Celebration Narrative',
-    intent: 'Honor Maya’s Sweet 16 with a luminous “Neon Bloom” ritual that feels older than confetti yet still playful.',
-    highlights: [
-      'Arrival runway with glow sensors → audio guestbook → lighting reveal.',
-      'Emotional arc: awe on arrival, intimacy during dinner pods, catharsis on dance floor.',
-      'Anchor Maya’s art-school sketches into projection textures.'
-    ],
-    nudges: [
-      'Capture 20-second reflections from each guest for a Monday highlight reel.',
-      'Script two surprise micro-moments (light wand entrance, parent toast remix).'
+    title: 'Atmosphere',
+    options: [
+      'Palette: Sunshine yellow + emerald anchoring tones',
+      'Materials: Sheer voile, chrome plinths, velvet lounge pads',
+      'Lighting: Pre-programmed scenes for each journey moment'
     ]
   },
   {
-    title: 'Atmosphere Canvas',
-    intent: 'Curate a sensory palette that teaches “calm intent” for every future plan.',
-    highlights: [
-      'Palette: ultraviolet core, champagne haze, matte midnight anchor.',
-      'Materials: sheer voile drapes, chrome plinths, velvet conversation cubes.',
-      'Scent cue: grapefruit + cedar diffusers triggered at check-in.'
-    ],
-    nudges: [
-      'Label each décor zone with a verb (Glow, Drift, Bloom) so ops stay aligned.',
-      'Program lighting presets tied to timeline steps to avoid panic switching.'
+    title: 'Menu & Bar',
+    options: [
+      'Progressive bites (3 drops) color-matched to lighting',
+      'Mocktail lab with NFC unlock cards',
+      'Comfort finale: molten cakes + neon sugar lattice'
     ]
   },
   {
-    title: 'Spatial Playbook',
-    intent: 'Guide guests through discovery loops instead of parking them at a single table.',
-    highlights: [
-      'Flow: Arrival runway → Aura Scan booth → Dinner pods → Bloom Lab dessert studio.',
-      'Projection-mapped arrows nudge traffic every 30 min.',
-      'Polaroid gratitude wall doubles as favor pickup.'
-    ],
-    nudges: [
-      'Send a QR mini-map with invites so guests anticipate the route.',
-      'Assign two “energy hosts” to pulse groups without shouting instructions.'
-    ]
-  },
-  {
-    title: 'Menu & Bar Cadence',
-    intent: 'Mindful indulgence—light, interactive, color-synced with light scenes.',
-    highlights: [
-      'Progressive bites served in three drops, each echoing palette colors.',
-      'Mocktail lab unlocking flavors via NFC cards.',
-      'Warm finale: molten cakes with edible neon sugar lattice.'
-    ],
-    nudges: [
-      'Prep allergy tokens so guests can flag needs silently.',
-      'Stack infusion pitchers labelled Calm / Elevate / Hype.'
-    ]
-  },
-  {
-    title: 'Experience Timeline',
-    intent: '90-minute arc that rewards punctuality but feels spontaneous.',
-    highlights: [
-      '6:00–6:20 Arrival + Aura Scan (AI photobooth).',
-      '6:20–6:40 Parent toast + lighting reveal.',
-      '6:40–7:10 Dinner pods with conversation cards.',
-      '7:10–8:00 Dance Bloom + dessert studio drop.'
-    ],
-    nudges: [
-      'Text VIPs gentle reminders 10 min before each scene change.',
-      'Use soft chimes instead of MC shout-outs to preserve atmosphere.'
-    ]
-  },
-  {
-    title: 'Budget Confidence',
-    intent: 'Stay within $8,000 while reinforcing a sustainable planning habit.',
-    highlights: [
-      'Must-invest: lighting programming ($2,400) and culinary experiences ($1,900).',
-      'Flexible: installation extras ($600), specialty florals ($750).',
-      'DIY-friendly: conversation cards, gratitude wall, signage.'
-    ],
-    nudges: [
-      'Log every DIY savings into a “habit bank” to visualize momentum.',
-      'Schedule vendor check-ins 14 and 7 days prior to avoid rush fees.'
+    title: 'Guest Touchpoints',
+    options: [
+      'Aura Scan keepsake photos on arrival',
+      'Audio guestbook + gratitude wall',
+      'Energy hosts rotating groups between zones'
     ]
   }
 ]
 
-const formatLatLng = (lat: number, lng: number) =>
-  `${lat.toFixed(3)}, ${lng.toFixed(3)}`
-
 export default function PlanPage() {
   const [prompt, setPrompt] = useState('')
   const [location, setLocation] = useState('')
+  const [locationError, setLocationError] = useState<string | null>(null)
   const [isFetchingLocation, setIsFetchingLocation] = useState(false)
+  const [activeMode, setActiveMode] = useState<'prompt' | 'classic'>('prompt')
   const [showClassic, setShowClassic] = useState(false)
+  const [classicData, setClassicData] = useState<ClassicData>(CLASSIC_DEFAULTS)
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [formStatus, setFormStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  const infoTips: Record<string, string> = {
+    eventType: 'Select the celebration archetype to set tone and vendors.',
+    occasion: 'Name of the experience or internal codename.',
+    honoree: 'Who is being celebrated or hosting?',
+    location: 'City, neighborhood, or venue zip. Tap Detect for GPS.',
+    guestAdults: 'Number of adult guests (18+).',
+    guestKids: 'Kids/teens (0-17). Enter 0 if none.',
+    budget: 'Total spend ceiling. Numbers only; $ is added.',
+    date: 'Calendar date for the celebration.',
+    timeStart: 'Guest arrival or experience start.',
+    timeEnd: 'Wrap time or handover.',
+    constraints: 'Anything to exclude so AI avoids misfires.',
+    guestNotes: 'Dietary needs, VIP notes, accessibility.',
+    extraNotes: 'Traditions, rituals, or feelings to honor.'
+  }
+
+  const updateClassicField = (key: keyof ClassicData, value: string) => {
+    setClassicData((prev) => ({
+      ...prev,
+      [key]:
+        key === 'budget'
+          ? value.trim()
+            ? value.trim().startsWith('$')
+              ? value.trim()
+              : `$${value.trim().replace(/^\$/, '')}`
+            : ''
+          : value
+    }))
+  }
+
+  const validateClassicForm = useCallback(() => {
+    const errors: Record<string, string> = {}
+
+    if (!classicData.eventType) errors.eventType = 'Pick an event type.'
+    if (!classicData.occasion.trim()) errors.occasion = 'Occasion name required.'
+    if (!(classicData.locationLabel || location)) errors.location = 'Provide a city/zip.'
+
+    const adults = Number(classicData.adultGuests)
+    if (!classicData.adultGuests || Number.isNaN(adults) || adults <= 0) {
+      errors.guestAdults = 'Need at least one adult.'
+    }
+    if (classicData.kidGuests) {
+      const kids = Number(classicData.kidGuests)
+      if (Number.isNaN(kids) || kids < 0) errors.guestKids = 'Use a positive number.'
+    }
+
+    if (!classicData.budget.trim()) errors.budget = 'Budget keeps vendors aligned.'
+    if (!classicData.date) errors.date = 'Select a date.'
+    else {
+      const selected = new Date(classicData.date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (selected < today) errors.date = 'Date cannot be in the past.'
+    }
+
+    if (!classicData.timeStart) errors.timeStart = 'Start time required.'
+    if (!classicData.timeEnd) errors.timeEnd = 'End time required.'
+    if (classicData.timeStart && classicData.timeEnd && classicData.timeStart >= classicData.timeEnd) {
+      errors.timeEnd = 'End must be later than start.'
+    }
+
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }, [classicData, location])
 
   const fetchLocation = useCallback(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) return
-    setIsFetchingLocation(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocation(formatLatLng(pos.coords.latitude, pos.coords.longitude))
-        setIsFetchingLocation(false)
-      },
-      () => setIsFetchingLocation(false),
-      { timeout: 5000, maximumAge: 60000 }
-    )
-  }, [])
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationError('Geolocation is not supported in this environment.')
+      return
+    }
+
+    const requestPosition = () => {
+      setIsFetchingLocation(true)
+      setLocationError(null)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords
+          const fallback = `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`
+
+          const resolveLabel = async () => {
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=12&addressdetails=1`
+              )
+              if (!response.ok) throw new Error('reverse geocode failed')
+              const data = await response.json()
+              const address = data.address || {}
+              const city = address.city || address.town || address.village || address.county
+              const state = address.state
+              const postal = address.postcode
+              const label = postal || [city, state].filter(Boolean).join(', ') || fallback
+              setLocation(label)
+              updateClassicField('locationLabel', label)
+              setLocationError(null)
+            } catch {
+              setLocation(fallback)
+              updateClassicField('locationLabel', fallback)
+              setLocationError('Using coordinates fallback. You can edit manually.')
+            } finally {
+              setIsFetchingLocation(false)
+            }
+          }
+
+          resolveLabel()
+        },
+        (error) => {
+          setIsFetchingLocation(false)
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationError('Please allow location permissions in your browser to auto-detect your city.')
+          } else {
+            setLocationError('Unable to fetch location. Try again or enter it manually.')
+          }
+        },
+        { timeout: 5000, maximumAge: 60000 }
+      )
+    }
+
+    if (navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: 'geolocation' as PermissionName })
+        .then((result) => {
+          if (result.state === 'denied') {
+            setLocationError('Location permission is blocked. Enable it in your browser settings to auto-detect.')
+          } else {
+            requestPosition()
+          }
+        })
+        .catch(() => {
+          requestPosition()
+        })
+    } else {
+      requestPosition()
+    }
+  }, [updateClassicField])
 
   useEffect(() => {
-    if (!location) {
-      fetchLocation()
-    }
+    if (!location) fetchLocation()
   }, [fetchLocation, location])
 
-  const intentChips = useMemo(
+  const overview = useMemo(
     () => [
-      { label: 'Intent', value: 'High-touch neon celebration for Sweet 16' },
-      { label: 'Guest Mix', value: '40 adults · 12 teens' },
-      { label: 'Budget', value: '$8,000' },
-      { label: 'Location', value: location || (isFetchingLocation ? 'Detecting...' : 'Tap to auto-detect') },
-      { label: 'Date', value: 'Saturday · April 19 · 6-10pm' }
+      { label: 'Intent', value: 'Luminous Sweet 16 ritual' },
+      { label: 'Budget', value: '$8,000 (must-invest lighting + culinary)' },
+      { label: 'Guests', value: '40 adults · 12 teens' },
+      { label: 'Location', value: location || (isFetchingLocation ? 'Detecting…' : 'Tap to detect') }
     ],
     [location, isFetchingLocation]
   )
 
-  const heroBlock = PLAN_BLOCKS[0]
+  const promptSnippet = prompt ? `${prompt.slice(0, 80)}${prompt.length > 80 ? '…' : ''}` : 'Awaiting prompt'
+  const generatedPrompt = useMemo(() => {
+    if (!classicData.eventType && !classicData.occasion) return null
+    const parts = [
+      classicData.eventType ? `Plan a ${classicData.eventType}` : 'Plan a celebration',
+      classicData.occasion ? `called "${classicData.occasion}"` : '',
+      classicData.locationLabel ? `in ${classicData.locationLabel}` : '',
+      classicData.adultGuests ? `for ${classicData.adultGuests} adults` : '',
+      classicData.kidGuests ? `and ${classicData.kidGuests} teens/kids` : '',
+      classicData.budget ? `within ${classicData.budget}` : '',
+      classicData.date ? `on ${classicData.date}` : '',
+      classicData.timeStart && classicData.timeEnd ? `from ${classicData.timeStart} to ${classicData.timeEnd}` : ''
+    ]
+    return parts.filter(Boolean).join(' ') || null
+  }, [classicData])
+
+  const handlePlanSubmit = () => {
+    if (validateClassicForm()) {
+      setFormStatus({
+        type: 'success',
+        message: generatedPrompt ? `Prompt ready: ${generatedPrompt}` : 'Inputs captured. You can now plan.'
+      })
+    } else {
+      setFormStatus({
+        type: 'error',
+        message: 'Please fix the highlighted fields.'
+      })
+    }
+  }
+
+  const handleResetForm = () => {
+    setClassicData({ ...CLASSIC_DEFAULTS })
+    setFormErrors({})
+    setFormStatus(null)
+  }
+
+  const InfoIcon = ({ tip }: { tip: string }) => (
+    <span className="relative inline-flex group">
+      <button
+        type="button"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[#E8EDE5] text-[10px] font-semibold text-gray-500 bg-white focus:outline-none focus:ring-2 focus:ring-[#FFD93D]"
+        aria-label="Field help"
+      >
+        i
+      </button>
+      <span
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-48 -translate-x-1/2 rounded-xl bg-gray-900/95 px-3 py-2 text-[11px] font-medium text-white opacity-0 shadow-lg transition group-hover:opacity-100 group-focus-within:opacity-100"
+      >
+        {tip}
+      </span>
+    </span>
+  )
+
+  type FieldConfig = {
+    key: string
+    dataKey: keyof ClassicData
+    label: string
+    placeholder: string
+    type?: 'text' | 'number' | 'date' | 'time' | 'select'
+    options?: string[]
+    infoKey: keyof typeof infoTips
+    errorKey?: string
+    auto?: boolean
+    showButton?: boolean
+    fullWidth?: boolean
+  }
+
+  const classicFields: FieldConfig[] = [
+    {
+      key: 'eventType',
+      dataKey: 'eventType',
+      label: 'Event Type',
+      placeholder: 'Select type',
+      type: 'select',
+      options: [
+        'Sweet 16',
+        'Birthday Bash',
+        'Anniversary Dinner',
+        'Baby Shower',
+        'Bridal Shower',
+        'Engagement Party',
+        'Corporate Social',
+        'Pop-Up Launch',
+        'Holiday Party',
+        'Graduation',
+        'Cocktail Soirée',
+        'Family Reunion',
+        'Other'
+      ],
+      infoKey: 'eventType',
+      errorKey: 'eventType'
+    },
+    { key: 'occasion', dataKey: 'occasion', label: 'Occasion Name', placeholder: 'Maya’s Neon Bloom', infoKey: 'occasion', errorKey: 'occasion' },
+    { key: 'honoree', dataKey: 'honoree', label: 'Honoree', placeholder: 'Maya Johnson', infoKey: 'honoree' },
+    {
+      key: 'location',
+      dataKey: 'locationLabel',
+      label: 'Location / City / Zip',
+      placeholder: 'Auto or type location',
+      infoKey: 'location',
+      errorKey: 'location',
+      auto: true,
+      showButton: true,
+      fullWidth: true
+    },
+    { key: 'guestAdults', dataKey: 'adultGuests', label: 'Adult Guests (18+)', placeholder: '40 adults', type: 'number', infoKey: 'guestAdults', errorKey: 'guestAdults' },
+    { key: 'guestKids', dataKey: 'kidGuests', label: 'Kids / Teens (0-17)', placeholder: '12 teens', type: 'number', infoKey: 'guestKids', errorKey: 'guestKids' },
+    { key: 'budget', dataKey: 'budget', label: 'Budget Range', placeholder: '$8,000 cap', infoKey: 'budget', errorKey: 'budget' },
+    { key: 'date', dataKey: 'date', label: 'Event Date', placeholder: 'Select date', type: 'date', infoKey: 'date', errorKey: 'date' },
+    { key: 'timeStart', dataKey: 'timeStart', label: 'Start Time', placeholder: '6:00 PM', type: 'time', infoKey: 'timeStart', errorKey: 'timeStart' },
+    { key: 'timeEnd', dataKey: 'timeEnd', label: 'End Time', placeholder: '10:00 PM', type: 'time', infoKey: 'timeEnd', errorKey: 'timeEnd' },
+    { key: 'constraints', dataKey: 'constraints', label: 'Exclude / Constraints', placeholder: 'No clowns, must protect reveal', infoKey: 'constraints' }
+  ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fdf8ff] via-[#f0f2ff] to-[#fef5f0] text-gray-900">
-      <header className="sticky top-0 z-40 backdrop-blur-2xl bg-white/75 border-b border-white/70">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+    <div className="min-h-screen" style={{ background: BRAND.cream, color: BRAND.graphite }}>
+      <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-white/60" style={{ background: 'rgba(255,255,245,0.95)' }}>
+        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.35em] text-purple-500 font-semibold">Plan Habit</p>
-            <h1 className="text-2xl font-bold text-gray-900">Designer Planning Canvas</h1>
+            <p className="text-[11px] uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Plan Celebration</p>
+            <h1 className="text-2xl font-bold">Festimo planning start point</h1>
           </div>
-          <div className="flex gap-3">
-            <button className="px-4 py-2 rounded-full border border-gray-200 bg-white/80 text-sm font-semibold shadow-sm">Save Snapshot</button>
-            <button className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold shadow">Share Plan</button>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 rounded-full text-sm font-semibold shadow" style={{ border: '1px solid #E8EDE5', background: 'white' }}>
+              Save
+            </button>
+            <button className="px-4 py-2 rounded-full text-sm font-semibold text-white shadow"
+              style={{ background: 'linear-gradient(135deg, #FFD93D, #2DB876)' }}>
+              Share
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-12 space-y-10">
-        <section className="grid lg:grid-cols-2 gap-6">
-          <motion.div
-            className="rounded-3xl border border-white/70 bg-white/90 shadow-[0_25px_60px_rgba(81,56,237,0.08)] p-6 space-y-5"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <p className="text-xs uppercase tracking-[0.3em] text-purple-500 font-semibold">Tell us the vibe</p>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the celebration, desired feelings, constraints..."
-              className="w-full min-h-[120px] rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
-            />
-            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-              <button className="rounded-2xl bg-gray-900 text-white py-3 text-sm font-semibold">
-                Generate Intent Plan
-              </button>
-              <button
-                onClick={() => setShowClassic(true)}
-                className="rounded-2xl border border-gray-200 bg-white/80 text-sm font-semibold text-purple-700 px-4 py-3"
-              >
-                Classic Form
-              </button>
-            </div>
-            <p className="text-xs text-gray-500">
-              Tip: include venue vibe, guest expectations, sensory cues, non-negotiables.
-            </p>
-          </motion.div>
-
-          <motion.div
-            className="rounded-3xl border border-white/70 bg-gradient-to-br from-white to-[#f4ecff] p-6 shadow-[0_25px_60px_rgba(111,63,203,0.12)] space-y-4"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <p className="text-xs uppercase tracking-[0.3em] text-rose-500 font-semibold">Intent snapshot</p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {intentChips.map((chip) => (
-                <div key={chip.label} className="rounded-2xl border border-white/70 bg-white/90 p-3">
-                  <p className="text-[11px] uppercase tracking-wide text-gray-500">{chip.label}</p>
-                  <p className="text-sm font-semibold text-gray-900 mt-1">{chip.value}</p>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-2xl border border-white/70 bg-white p-3 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Habit cue</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  Pin one micro win per block → unlock “Calm Planner” badge.
-                </p>
-              </div>
-              <button className="px-3 py-2 rounded-xl bg-gray-900 text-white text-xs font-semibold">View log</button>
-            </div>
-          </motion.div>
-        </section>
-
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-purple-500 font-semibold">Design philosophy</p>
-              <h2 className="text-2xl font-bold text-gray-900">Choreography overview</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Each block links intent → sensory cues → habit nudges. Scan the capsules, then deep dive below.
-              </p>
-            </div>
-            <button className="px-4 py-2 rounded-full border border-gray-200 bg-white/80 text-sm font-semibold text-gray-700">
-              Export Summary
-            </button>
-          </div>
-
-          <div className="overflow-x-auto -mx-1 px-1 pb-2">
-            <div className="flex gap-3 min-w-max">
-              {PLAN_BLOCKS.map((block, idx) => (
-                <div
-                  key={`stage-chip-${block.title}`}
-                  className="flex items-center gap-3 rounded-2xl border border-white/70 bg-gradient-to-r from-white to-[#f6f2ff] px-4 py-3 shadow-[0_10px_30px_rgba(60,41,120,0.08)]"
+      <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
+        <section className="rounded-[28px] border border-white/70 shadow-[0_20px_60px_rgba(107,207,126,0.2)] p-6"
+          style={{ background: 'rgba(255,255,255,0.95)' }}>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: BRAND.smoke }}>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchLocation}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#E8EDE5] bg-white px-3 py-1 text-[11px] normal-case font-normal tracking-normal text-gray-600 hover:border-[#C2D4C6] disabled:opacity-60"
+                  disabled={isFetchingLocation}
                 >
-                  <div className="flex flex-col items-center">
-                    <span className="text-[10px] uppercase tracking-[0.4em] text-purple-400">Stage</span>
-                    <span className="text-lg font-bold text-gray-900">{(idx + 1).toString().padStart(2, '0')}</span>
-                  </div>
-                  <div className="text-sm text-gray-700 font-semibold max-w-[180px]">
-                    {block.title}
-                    <p className="text-[11px] text-gray-500 font-normal">
-                      {block.intent.split('.').slice(0, 1).join('.')}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                  <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" fill="none" strokeWidth="2" className="text-emerald-500">
+                    <path d="M12 2C8 2 5 5 5 9c0 4.2 5.6 10.4 6.3 11.2.4.5 1.1.5 1.5 0C13.4 19.4 19 13.2 19 9c0-4-3-7-7-7z" />
+                    <circle cx="12" cy="9" r="2.5" />
+                  </svg>
+                  {isFetchingLocation ? 'Locating…' : location || 'Location not fetched — tap to detect'}
+                </button>
+              </div>
+              {locationError && (
+                <p className="text-[11px] font-medium text-red-500 normal-case tracking-normal">{locationError}</p>
+              )}
             </div>
-          </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setActiveMode('prompt')}
+                  className="flex-1 rounded-full px-4 py-3 text-sm font-semibold transition shadow-sm"
+                  style={{
+                    border: activeMode === 'prompt' ? 'none' : '1px solid #E8EDE5',
+                    color: BRAND.graphite,
+                    background:
+                      activeMode === 'prompt' ? 'linear-gradient(135deg, #FFD93D, #6BCF7E)' : 'rgba(255,255,255,0.9)'
+                  }}
+                >
+                  Tell us the vibe
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveMode('classic')
+                    setShowClassic(true)
+                  }}
+                  className="flex-1 rounded-full px-4 py-3 text-sm font-semibold transition shadow-sm"
+                  style={{
+                    border: activeMode === 'classic' ? 'none' : '1px solid #E8EDE5',
+                    color: BRAND.graphite,
+                    background:
+                      activeMode === 'classic' ? 'linear-gradient(135deg, #FFD93D, #6BCF7E)' : 'rgba(255,255,255,0.9)'
+                  }}
+                >
+                  Classic form
+                </button>
+              </div>
 
-          <motion.article
-            className="rounded-[32px] border border-white/80 bg-gradient-to-br from-white via-[#fdfafd] to-[#f4ecff] p-6 shadow-[0_35px_90px_rgba(50,23,112,0.12)] grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.4em] text-purple-500 font-semibold">Celebration Narrative</p>
-                  <h3 className="text-2xl font-bold text-gray-900">Block 1</h3>
-                </div>
-                <span className="text-sm font-semibold text-rose-400">Ritual Layer</span>
-              </div>
-              <p className="text-lg font-semibold text-gray-900">{heroBlock.intent}</p>
-              <div className="space-y-2">
-                {heroBlock.highlights.map((highlight) => (
-                  <p key={`hero-highlight-${highlight}`} className="flex gap-2 text-sm text-gray-700">
-                    <span className="text-purple-300 font-bold">•</span>
-                    <span>{highlight}</span>
-                  </p>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-3xl border border-white bg-white/80 p-5 space-y-3">
-              <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Why it matters</p>
-              <p className="text-sm text-gray-700">
-                This block sets the emotional grammar of the entire night. Getting Maya’s “Neon Bloom” moment right makes every downstream vendor decision easier.
-              </p>
-              <div className="rounded-2xl border border-purple-100 bg-purple-50/60 p-4 space-y-2">
-                <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold">Habit nudges</p>
-                {heroBlock.nudges.map((nudge) => (
-                  <p key={`hero-nudge-${nudge}`} className="text-sm text-gray-700 flex gap-2">
-                    <span className="text-purple-400 font-bold">✶</span>
-                    <span>{nudge}</span>
-                  </p>
-                ))}
-              </div>
-            </div>
-          </motion.article>
-
-          <div className="space-y-4">
-            {PLAN_BLOCKS.slice(1).map((block, index) => (
-              <motion.article
-                key={block.title}
-                className="rounded-3xl border border-white/70 bg-white/92 shadow-[0_15px_45px_rgba(26,26,67,0.05)] p-6 grid gap-4 lg:grid-cols-[1fr_260px]"
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-semibold text-gray-900">{block.title}</h3>
-                    <span className="text-xs uppercase text-gray-400 tracking-widest">Block {index + 2}</span>
-                  </div>
-                  <p className="text-sm text-purple-600 font-medium">{block.intent}</p>
-                  <ul className="space-y-2">
-                    {block.highlights.map((highlight) => (
-                      <li key={highlight} className="text-sm text-gray-700 flex gap-2">
-                        <span className="text-purple-300 mt-1">•</span>
-                        <span>{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="rounded-2xl border border-gray-100 bg-gray-50/85 p-4 space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Micro nudges</p>
-                  {block.nudges.map((nudge) => (
-                    <p key={nudge} className="text-sm text-gray-700 border-l-2 border-purple-200 pl-3">
-                      {nudge}
-                    </p>
-                  ))}
-                  <button className="mt-3 w-full rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-800 py-2">
-                    Pin to Habit Tray
+            {activeMode === 'prompt' ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Describe the celebration, desired feelings, constraints..."
+                  className="w-full rounded-3xl border border-[#E8EDE5] bg-white px-4 py-4 text-sm focus:outline-none focus:ring-2"
+                  style={{ boxShadow: '0 8px 24px rgba(107, 207, 126, 0.15)' }}
+                />
+                <div className="flex justify-center">
+                  <button
+                    className="rounded-2xl px-10 text-white py-3 text-sm font-semibold shadow-lg transition"
+                    style={{ background: 'linear-gradient(135deg, #FFD93D, #2DB876)' }}
+                  >
+                    Generate
                   </button>
                 </div>
-              </motion.article>
-            ))}
+                <p className="text-xs" style={{ color: BRAND.smoke }}>
+                  Tip: include vibe words, location hints, headcount, and any taboos.
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <p className="text-sm" style={{ color: BRAND.smoke }}>
+                  Classic form is active. Fill the structured fields to continue.
+                </p>
+              </motion.div>
+            )}
           </div>
         </section>
+
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="space-y-6">
+            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Intent overview</p>
+                  <h2 className="text-xl font-semibold">Inputs & signals</h2>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-semibold" style={{ color: BRAND.sunshine }}>
+                    Prompt: {promptSnippet}
+                  </p>
+                  {generatedPrompt && (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      AI suggestion: <span className="font-semibold text-gray-800">{generatedPrompt}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3 mt-4">
+                {overview.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-[#E8EDE5] bg-white/90 p-3">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400">{item.label}</p>
+                    <p className="text-sm font-semibold text-gray-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-[#E8EDE5] bg-[#FFFDF5] p-4 mt-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Reflection</p>
+                <p className="text-sm text-gray-700">
+                  AI is ready to surface habits once you pin a preference or confirm a decision.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Journey map</p>
+                  <h2 className="text-xl font-semibold">Evening choreography</h2>
+                </div>
+                <button className="px-4 py-2 rounded-full border border-[#E8EDE5] text-sm font-semibold">Edit timeline</button>
+              </div>
+              <div className="space-y-3">
+                {JOURNEY_MAP.map((step) => (
+                  <div key={step.time} className="flex flex-col gap-1 rounded-2xl border border-[#E8EDE5] bg-white/90 p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-semibold text-gray-500">{step.time}</span>
+                      <p className="text-sm font-semibold text-gray-900">{step.label}</p>
+                    </div>
+                    <p className="text-sm text-gray-600">{step.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Decision cards</p>
+                  <h2 className="text-xl font-semibold">Key choices</h2>
+                </div>
+                <button className="px-4 py-2 rounded-full border border-[#E8EDE5] text-sm font-semibold">Add decision</button>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                {DECISIONS.map((decision) => (
+                  <div key={decision.title} className="rounded-2xl border border-[#E8EDE5] bg-[#F8FAF5] p-4 space-y-2">
+                    <p className="text-sm font-semibold text-gray-900">{decision.title}</p>
+                    <ul className="space-y-1">
+                      {decision.options.map((option) => (
+                        <li key={option} className="text-sm text-gray-700">
+                          • {option}
+                        </li>
+                      ))}
+                    </ul>
+                    <button className="text-xs font-semibold text-emerald-600">Mark as decided</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <aside className="space-y-6">
+            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-4">
+              <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.sunshine }}>Action items</p>
+              <div className="space-y-3">
+                {ACTION_ITEMS.map((item) => (
+                  <div key={item.task} className="rounded-2xl border border-[#E8EDE5] bg-white/90 p-4">
+                    <p className="text-sm font-semibold text-gray-900">{item.task}</p>
+                    <p className="text-xs text-gray-500">Owner: {item.owner}</p>
+                    <p className="text-xs text-gray-500">Due: {item.due}</p>
+                    <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold"
+                      style={{ background: '#F8FAF5', border: '1px solid #E8EDE5' }}>
+                      {item.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button className="w-full rounded-2xl border border-[#E8EDE5] text-sm font-semibold py-2">Create task</button>
+            </div>
+
+            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-3">
+              <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Context tags</p>
+              <div className="flex flex-wrap gap-2">
+                {['Intent-led', 'Habit: Calm planner', 'Loft venue', 'Evening', '$8k cap'].map((tag) => (
+                  <span key={tag} className="px-3 py-1 rounded-full bg-[#F8FAF5] border border-[#E8EDE5] text-xs font-semibold">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </section>
       </main>
+
+      <footer className="border-t border-white/60" style={{ background: 'rgba(255,255,245,0.95)' }}>
+        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Delivery summary</p>
+            <p className="text-sm text-gray-700">
+              Primary intent: luminous Sweet 16 ritual. Must-do next: {ACTION_ITEMS[0].task}. Confidence:{' '}
+              <span className="font-semibold text-emerald-600">82%</span>
+            </p>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <button className="px-4 py-2 rounded-full border border-[#E8EDE5] bg-white text-sm font-semibold text-gray-700">
+              Export PDF (Locked)
+            </button>
+            <button className="px-4 py-2 rounded-full text-white text-sm font-semibold shadow"
+              style={{ background: BRAND.graphite }}>
+              Share link
+            </button>
+          </div>
+        </div>
+      </footer>
 
       <AnimatePresence>
         {showClassic && (
@@ -333,46 +608,146 @@ export default function PlanPage() {
             onClick={() => setShowClassic(false)}
           >
             <motion.div
-              className="w-full max-w-xl bg-white rounded-3xl border border-white/70 p-6 space-y-4 shadow-2xl"
+              className="w-full max-w-3xl rounded-[32px] border border-white/70 bg-white p-6 space-y-4 shadow-2xl"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-purple-500">Classic inputs</p>
-                  <h3 className="text-xl font-semibold text-gray-900">Structured intent form</h3>
+                  <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Celebration Planning Form</p>
+                  <h3 className="text-xl font-semibold text-gray-900">Classic details capture</h3>
                 </div>
-                <button className="text-sm font-semibold text-gray-500 hover:text-gray-700" onClick={() => setShowClassic(false)}>
-                  Close
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="px-3 py-1.5 rounded-full border border-[#E8EDE5] text-xs font-semibold text-gray-600 hover:border-[#C2D4C6]"
+                  >
+                    Reset
+                  </button>
+                  <button className="text-sm font-semibold text-gray-500 hover:text-gray-700" onClick={() => setShowClassic(false)}>
+                    Close
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-3">
-                {['Event Type', 'Occasion Name', 'Honoree', 'Location / City / Zip'].map((label) => (
-                  <label key={label} className="text-xs font-semibold text-gray-600 flex flex-col gap-1">
-                    {label}
-                    <input
-                      type="text"
-                      className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-200"
-                      placeholder={label === 'Location / City / Zip' ? location || 'Auto or type location' : `Enter ${label.toLowerCase()}`}
-                      value={label === 'Location / City / Zip' ? location : undefined}
-                      readOnly={label === 'Location / City / Zip' && !!location}
-                      onFocus={label === 'Location / City / Zip' && !location ? fetchLocation : undefined}
-                    />
-                  </label>
-                ))}
-                <label className="text-xs font-semibold text-gray-600 flex flex-col gap-1">
-                  Extra Intent
+              <div
+                className="rounded-2xl border border-[#E8EDE5] bg-gradient-to-r from-[#FFFDEB] to-[#F2FFFB] p-3 text-xs text-gray-600 shadow-inner"
+              >
+                {generatedPrompt
+                  ? <>Auto prompt preview: <span className="font-semibold text-gray-900">{generatedPrompt}</span></>
+                  : 'Fill the form to auto-generate a backend prompt.'}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {classicFields.map((field) => {
+                  const value = field.key === 'location' ? classicData.locationLabel || location : classicData[field.dataKey]
+                  const errorMsg = field.errorKey ? formErrors[field.errorKey] : undefined
+                  const inputClasses = [
+                    'rounded-2xl',
+                    'px-4',
+                    'py-2.5',
+                    'text-sm',
+                    'flex-1',
+                    'transition',
+                    'focus:outline-none',
+                    'focus:ring-2',
+                    errorMsg ? 'border-red-400 bg-red-50 focus:ring-red-200' : 'border-[#E8EDE5] bg-gray-50 focus:ring-[#FFD93D]'
+                  ].join(' ')
+                  return (
+                    <label
+                      key={field.key}
+                      className={`flex flex-col gap-1 text-[13px] font-semibold ${field.fullWidth ? 'sm:col-span-2' : ''}`}
+                      style={{ color: BRAND.graphite }}
+                    >
+                      <span className="flex items-center gap-1 text-[12px]" style={{ color: BRAND.emerald }}>
+                        {field.label}
+                        <InfoIcon tip={infoTips[field.infoKey]} />
+                      </span>
+                      {field.type === 'select' ? (
+                        <select
+                          className={`${inputClasses} appearance-none bg-gradient-to-r from-white to-[#F9FFF7]`}
+                          value={classicData.eventType}
+                          onChange={(e) => updateClassicField('eventType', e.target.value)}
+                        >
+                          <option value="" disabled hidden>
+                            Choose an event type
+                          </option>
+                          {field.options?.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className={`flex gap-2 ${field.fullWidth ? 'flex-col sm:flex-row sm:items-center' : ''}`}>
+                          <input
+                            type={field.type || 'text'}
+                            min={field.type === 'number' ? 0 : undefined}
+                            className={inputClasses}
+                            placeholder={field.placeholder}
+                            value={value}
+                            onChange={(e) => updateClassicField(field.dataKey, e.target.value)}
+                            onFocus={field.auto && !classicData.locationLabel ? fetchLocation : undefined}
+                          />
+                          {field.showButton && (
+                            <button
+                              type="button"
+                              onClick={fetchLocation}
+                              className="px-4 py-2 rounded-2xl border border-[#E8EDE5] text-xs font-semibold text-gray-600 bg-white shadow-sm"
+                            >
+                              {isFetchingLocation ? 'Locating…' : 'Use GPS'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {errorMsg && <p className="text-[11px] font-medium text-red-500">{errorMsg}</p>}
+                    </label>
+                  )
+                })}
+                <label className="flex flex-col gap-1 text-[13px] font-semibold" style={{ color: BRAND.graphite }}>
+                  <span className="flex items-center gap-1 text-[12px]" style={{ color: BRAND.emerald }}>
+                    Guest Notes / Dietary
+                    <InfoIcon tip={infoTips.guestNotes} />
+                  </span>
                   <textarea
-                    className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm min-h-[90px] focus:outline-none focus:ring-2 focus:ring-purple-200"
+                    className="rounded-2xl border border-[#E8EDE5] bg-gray-50 px-4 py-2 text-sm min-h-[70px] focus:outline-none focus:ring-2 focus:ring-[#FFD93D]"
+                    placeholder="e.g., 3 vegan teens, 2 gluten-free adults."
+                    value={classicData.guestNotes}
+                    onChange={(e) => updateClassicField('guestNotes', e.target.value)}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-[13px] font-semibold sm:col-span-2" style={{ color: BRAND.graphite }}>
+                  <span className="flex items-center gap-1 text-[12px]" style={{ color: BRAND.emerald }}>
+                    Extra Notes
+                    <InfoIcon tip={infoTips.extraNotes} />
+                  </span>
+                  <textarea
+                    className="rounded-2xl border border-[#E8EDE5] bg-gray-50 px-4 py-3 text-sm min-h-[120px] focus:outline-none focus:ring-2 focus:ring-[#FFD93D]"
                     placeholder="Add traditions, taboos, scheduling constraints..."
+                    value={classicData.extraIntent}
+                    onChange={(e) => updateClassicField('extraIntent', e.target.value)}
                   />
                 </label>
               </div>
-              <button className="w-full rounded-2xl bg-gray-900 text-white py-3 font-semibold text-sm">
-                Apply to Plan
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={handlePlanSubmit}
+                  className="w-full rounded-2xl text-white py-3 font-semibold text-sm shadow-lg transition hover:shadow-xl"
+                  style={{ background: 'linear-gradient(135deg, #FFD93D, #2DB876)' }}
+                >
+                  Plan
+                </button>
+                {formStatus && (
+                  <p
+                    className={`text-sm text-center font-medium ${
+                      formStatus.type === 'error' ? 'text-red-500' : 'text-emerald-600'
+                    }`}
+                  >
+                    {formStatus.message}
+                  </p>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}
