@@ -51,6 +51,7 @@ const CLASSIC_DEFAULTS: ClassicData = {
   extraIntent: ''
 }
 
+const CONFETTI_COLORS = ['#FFD93D', '#6BCF7E', '#FF9AC5', '#A5D8FF', '#F5A524']
 const ACTION_ITEMS = [
   { task: 'Lock Loft Venue', owner: 'You', due: 'Apr 15', status: 'Pending' },
   { task: 'Lighting + Install Call', owner: 'Festimo Agent', due: 'Apr 02', status: 'Scheduled' },
@@ -361,10 +362,29 @@ export default function PlanPage() {
   return (
     <div className="min-h-screen" style={{ background: BRAND.cream, color: BRAND.graphite }}>
       <header className="sticky top-0 z-30 backdrop-blur-xl border-b border-white/60" style={{ background: 'rgba(255,255,245,0.95)' }}>
-        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between relative">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Plan Celebration</p>
-            <h1 className="text-2xl font-bold">Festimo planning start point</h1>
+            <p className="text-[11px] uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Plan</p>
+            <motion.h1
+              className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent"
+              style={{
+                backgroundImage: 'linear-gradient(120deg, #FFD93D, #FF9AC5, #6BCF7E, #A5D8FF)',
+                backgroundSize: '200% 200%'
+              }}
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                textShadow: [
+                  '0 0 12px rgba(255,217,61,0.35)',
+                  '0 0 18px rgba(107,207,126,0.45)',
+                  '0 0 12px rgba(255,217,61,0.35)'
+                ],
+                y: [0, -2, 0],
+                scale: [1, 1.015, 1]
+              }}
+              transition={{ repeat: Infinity, duration: 6, ease: 'easeInOut' }}
+            >
+              Celebration begins..
+            </motion.h1>
           </div>
           <div className="flex gap-2">
             <button className="px-4 py-2 rounded-full text-sm font-semibold shadow" style={{ border: '1px solid #E8EDE5', background: 'white' }}>
@@ -462,119 +482,6 @@ export default function PlanPage() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-          <div className="space-y-6">
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Intent overview</p>
-                  <h2 className="text-xl font-semibold">Inputs & signals</h2>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold" style={{ color: BRAND.sunshine }}>
-                    Prompt: {promptSnippet}
-                  </p>
-                  {generatedPrompt && (
-                    <p className="text-[11px] text-gray-500 mt-1">
-                      AI suggestion: <span className="font-semibold text-gray-800">{generatedPrompt}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-3 mt-4">
-                {overview.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-[#E8EDE5] bg-white/90 p-3">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-400">{item.label}</p>
-                    <p className="text-sm font-semibold text-gray-900">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-2xl border border-[#E8EDE5] bg-[#FFFDF5] p-4 mt-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Reflection</p>
-                <p className="text-sm text-gray-700">
-                  AI is ready to surface habits once you pin a preference or confirm a decision.
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Journey map</p>
-                  <h2 className="text-xl font-semibold">Evening choreography</h2>
-                </div>
-                <button className="px-4 py-2 rounded-full border border-[#E8EDE5] text-sm font-semibold">Edit timeline</button>
-              </div>
-              <div className="space-y-3">
-                {JOURNEY_MAP.map((step) => (
-                  <div key={step.time} className="flex flex-col gap-1 rounded-2xl border border-[#E8EDE5] bg-white/90 p-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-semibold text-gray-500">{step.time}</span>
-                      <p className="text-sm font-semibold text-gray-900">{step.label}</p>
-                    </div>
-                    <p className="text-sm text-gray-600">{step.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Decision cards</p>
-                  <h2 className="text-xl font-semibold">Key choices</h2>
-                </div>
-                <button className="px-4 py-2 rounded-full border border-[#E8EDE5] text-sm font-semibold">Add decision</button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                {DECISIONS.map((decision) => (
-                  <div key={decision.title} className="rounded-2xl border border-[#E8EDE5] bg-[#F8FAF5] p-4 space-y-2">
-                    <p className="text-sm font-semibold text-gray-900">{decision.title}</p>
-                    <ul className="space-y-1">
-                      {decision.options.map((option) => (
-                        <li key={option} className="text-sm text-gray-700">
-                          • {option}
-                        </li>
-                      ))}
-                    </ul>
-                    <button className="text-xs font-semibold text-emerald-600">Mark as decided</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <aside className="space-y-6">
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-4">
-              <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.sunshine }}>Action items</p>
-              <div className="space-y-3">
-                {ACTION_ITEMS.map((item) => (
-                  <div key={item.task} className="rounded-2xl border border-[#E8EDE5] bg-white/90 p-4">
-                    <p className="text-sm font-semibold text-gray-900">{item.task}</p>
-                    <p className="text-xs text-gray-500">Owner: {item.owner}</p>
-                    <p className="text-xs text-gray-500">Due: {item.due}</p>
-                    <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold"
-                      style={{ background: '#F8FAF5', border: '1px solid #E8EDE5' }}>
-                      {item.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full rounded-2xl border border-[#E8EDE5] text-sm font-semibold py-2">Create task</button>
-            </div>
-
-            <div className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow space-y-3">
-              <p className="text-xs uppercase tracking-[0.35em]" style={{ color: BRAND.lime }}>Context tags</p>
-              <div className="flex flex-wrap gap-2">
-                {['Intent-led', 'Habit: Calm planner', 'Loft venue', 'Evening', '$8k cap'].map((tag) => (
-                  <span key={tag} className="px-3 py-1 rounded-full bg-[#F8FAF5] border border-[#E8EDE5] text-xs font-semibold">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </aside>
-        </section>
       </main>
 
       <footer className="border-t border-white/60" style={{ background: 'rgba(255,255,245,0.95)' }}>
